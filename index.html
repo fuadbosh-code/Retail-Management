@@ -228,6 +228,16 @@
 
         <label>Hər modul üçün tələb olunan ümumi saat</label>
         <div id="modulesInputs"></div>
+		
+		<div style="margin-top:15px;padding:10px;background:#f9fafb;border-radius:6px;">
+  <h4 style="margin-top:0;">Modul İdarəetməsi</h4>
+  <div style="display:flex;gap:8px;margin-bottom:10px;">
+    <input id="newModuleName" placeholder="Yeni modul adı" style="flex:1;" />
+    <input id="newModuleHours" type="number" placeholder="Saat" style="width:80px;" value="40" />
+    <button id="addModuleBtn" class="btn">Modul Əlavə Et</button>
+  </div>
+  <div id="modulesList" style="max-height:200px;overflow-y:auto;"></div>
+</div>
 
         <div style="margin-top:10px">
           <button id="addGroupBtn" class="btn">Qrupu Yarat / Yenilə</button>
@@ -522,20 +532,33 @@
     });
 
     function updateModuleHours(groupCode) {
-        let defaultHours;
-        if (['CS1', 'CS2'].includes(groupCode)) defaultHours = DEFAULT_MODULE_HOURS['CS1/CS2'];
-        else if (groupCode === 'CS3') defaultHours = DEFAULT_MODULE_HOURS['CS3'];
-        else if (['CS4', 'CS5'].includes(groupCode)) defaultHours = DEFAULT_MODULE_HOURS['CS4/CS5'];
-        else defaultHours = MODULES.reduce((acc, m) => { acc[m] = 40; return acc; }, {});
+    let defaultHours;
+    if (['CS1', 'CS2'].includes(groupCode)) defaultHours = DEFAULT_MODULE_HOURS['CS1/CS2'];
+    else if (groupCode === 'CS3') defaultHours = DEFAULT_MODULE_HOURS['CS3'];
+    else if (['CS4', 'CS5'].includes(groupCode)) defaultHours = DEFAULT_MODULE_HOURS['CS4/CS5'];
+    else defaultHours = MODULES.reduce((acc, m) => { acc[m] = 40; return acc; }, {});
 
-        modulesInputs.innerHTML = '';
-        MODULES.forEach(m => {
-            const defaultVal = defaultHours[m] || 40;
-            const div = document.createElement('div'); div.className='module-row';
-            div.innerHTML = `<div style="flex:1"><label>${m}</label></div><input type="number" min="1" value="${defaultVal}" data-module="${m}" style="width:110px" />`;
-            modulesInputs.appendChild(div);
-        });
-    }
+    modulesInputs.innerHTML = '';
+    
+    // Əsas modullar
+    MODULES.forEach(m => {
+        const defaultVal = defaultHours[m] || 40;
+        const div = document.createElement('div'); 
+        div.className='module-row';
+        div.innerHTML = `<div style="flex:1"><label>${m}</label></div><input type="number" min="1" value="${defaultVal}" data-module="${m}" style="width:110px" />`;
+        modulesInputs.appendChild(div);
+    });
+    
+    // Əlavə edilmiş modullar
+    customModules.forEach(mod => {
+        const div = document.createElement('div'); 
+        div.className='module-row';
+        div.innerHTML = `<div style="flex:1"><label>${mod.name} <span class="badge" style="background:var(--purple);color:white;">Əlavə</span></label></div><input type="number" min="1" value="${mod.hours}" data-module="${mod.name}" style="width:110px" />`;
+        modulesInputs.appendChild(div);
+    });
+    
+    renderModulesList();
+}
 
     groupCodeInput.onchange = (e) => updateModuleHours(e.target.value);
     
@@ -864,7 +887,8 @@ function computeScheduleForGroup(group){
         }
         curDate = advanceToAllowed(curDate);
 
-        for(const module of MODULES){
+        const allModules = [...MODULES, ...customModules.map(m => m.name)];
+for(const module of allModules){
             const hours = Number(group.moduleHours[module]||40);
             const daysNeeded = Math.ceil(hours / dailyHours);
             const start = new Date(curDate);
@@ -2010,7 +2034,7 @@ function renderDashboard() {
       const noteDate = parseDateDMY(dateStr);
       const daysDiff = Math.ceil((noteDate - today) / (1000 * 60 * 60 * 24));
       
-      if (daysDiff >= -7 && daysDiff <= 14) {
+      if (daysDiff >= 0 && daysDiff <= 14) {
         upcomingNotes.push({
           group: g.name,
           date: dateStr,
@@ -2149,6 +2173,89 @@ setTimeout(() => {
 }, 500);
 
 updateModuleHours(groupCodeInput.value);
+
+// MODUL İDARƏETMƏSİ
+let customModules = [];
+
+function renderModulesList() {
+  const container = document.getElementById('modulesList');
+  if (!container) return;
+  
+  if (customModules.length === 0) {
+    container.innerHTML = '<p class="small muted">Əlavə modul yoxdur.</p>';
+    return;
+  }
+  
+  let html = '<div style="display:flex;flex-direction:column;gap:6px;">';
+  customModules.forEach((mod, idx) => {
+    html += `
+      <div style="display:flex;align-items:center;gap:8px;padding:8px;background:white;border-radius:4px;border:1px solid #e6edf3;">
+        <span style="flex:1;font-size:13px;">${mod.name}</span>
+        <span style="color:var(--muted);font-size:12px;">${mod.hours} saat</span>
+        <button class="btn secondary" style="padding:4px 8px;font-size:11px;" onclick="editModule(${idx})">Düzəlt</button>
+        <button class="btn danger" style="padding:4px 8px;font-size:11px;" onclick="deleteModule(${idx})">Sil</button>
+      </div>
+    `;
+  });
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+document.getElementById('addModuleBtn').onclick = () => {
+  const nameInput = document.getElementById('newModuleName');
+  const hoursInput = document.getElementById('newModuleHours');
+  
+  const name = nameInput.value.trim();
+  const hours = Number(hoursInput.value) || 40;
+  
+  if (!name) {
+    alert('Modul adı daxil edin!');
+    return;
+  }
+  
+  if (customModules.some(m => m.name === name)) {
+    alert('Bu adda modul artıq mövcuddur!');
+    return;
+  }
+  
+  customModules.push({ name, hours });
+  nameInput.value = '';
+  hoursInput.value = '40';
+  
+  renderModulesList();
+  updateModuleHours(groupCodeInput.value);
+};
+
+function editModule(idx) {
+  const mod = customModules[idx];
+  const newName = prompt('Yeni ad daxil edin:', mod.name);
+  if (!newName || newName.trim() === '') return;
+  
+  const trimmedName = newName.trim();
+  if (customModules.some((m, i) => m.name === trimmedName && i !== idx)) {
+    alert('Bu adda modul artıq mövcuddur!');
+    return;
+  }
+  
+  customModules[idx].name = trimmedName;
+  
+  const newHours = prompt('Yeni saat dəyəri (default):', mod.hours);
+  if (newHours && !isNaN(newHours)) {
+    customModules[idx].hours = Number(newHours);
+  }
+  
+  renderModulesList();
+  updateModuleHours(groupCodeInput.value);
+}
+
+function deleteModule(idx) {
+  if (!confirm('Bu modulu silmək istədiyinizdən əminsiniz?')) return;
+  
+  customModules.splice(idx, 1);
+  renderModulesList();
+  updateModuleHours(groupCodeInput.value);
+}
+
 </script>
 </body>
 </html>

@@ -140,6 +140,23 @@
     .tab-btn.active{background:var(--blue);color:#fff;border-color:var(--blue);}
     .tab-content{display:none;}
     .tab-content.active{display:block;}
+	
+	/* Tab Navigation */
+.main-tabs{background:#fff;border-bottom:2px solid #e6edf3;margin:-18px -18px 20px -18px;padding:0 18px;display:flex;gap:5px;position:sticky;top:0;z-index:100;}
+.main-tab{padding:12px 20px;background:transparent;border:none;border-bottom:3px solid transparent;cursor:pointer;font-size:14px;font-weight:500;color:var(--muted);transition:all 0.2s;}
+.main-tab:hover{color:var(--blue);background:#f9fafb;}
+.main-tab.active{color:var(--blue);border-bottom-color:var(--blue);}
+.tab-page{display:none;}
+.tab-page.active{display:block;}
+.dashboard-card{background:#fff;border:1px solid #e6edf3;border-radius:8px;padding:15px;margin-bottom:15px;}
+.dashboard-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:15px;margin-bottom:20px;}
+.status-badge{display:inline-block;padding:4px 10px;border-radius:12px;font-size:12px;font-weight:600;}
+.status-badge.active{background:#e0f2fe;color:#0369a1;}
+.status-badge.ending{background:#fef3c7;color:#92400e;}
+.module-progress{background:#f0f5f9;border-radius:6px;padding:8px;margin-top:8px;}
+.module-progress-bar{height:6px;background:#e6edf3;border-radius:3px;overflow:hidden;margin-top:5px;}
+.module-progress-fill{height:100%;background:var(--blue);transition:width 0.3s;}
+	
   </style>
 </head>
 <body>
@@ -171,90 +188,111 @@
           <button id="logoutBtn" class="btn danger">Çıxış</button>
         </div>
       </div>
-      <p class="small">Bu tətbiq Firebase Database ilə sinxronizasiya olunur. Tarix formatı: <strong>gün/ay/il</strong>.</p>
+      <!-- Tab Navigation -->
+<div class="main-tabs">
+  <button class="main-tab active" data-page="dashboard">🏠 Ana Səhifə</button>
+  <button class="main-tab" data-page="groups">📚 Qrup Əlavə Et / Redaktə Et</button>
+  <button class="main-tab" data-page="teachers">👥 Müəllimlər</button>
+  <button class="main-tab" data-page="holidays">🎉 Rəsmi Bayramlar</button>
+</div>
 
-      <div class="grid">
-        <div>
-          <div class="card">
-            <h3>Qrup əlavə et / redaktə et</h3>
-            <label>Qrup adı</label>
-            <input id="groupName" placeholder="Məs: CS1-Az" />
+<!-- Dashboard Page -->
+<div id="dashboardPage" class="tab-page active">
+  <h2 style="margin-bottom:20px;">📊 Ana Səhifə - Dashboard</h2>
+  <div id="dashboardContent">Yüklənir...</div>
+</div>
 
-            <label>Qrup kodu (Seans Seçimi)</label>
-            <select id="groupCode">
-              <option value="CS1">CS1 (Seans 1 - 09:00 - 13:00 - həftə içi - 4 saat/gün)</option>
-              <option value="CS2">CS2 (Seans 2 - 14:00 - 18:00 - həftə içi - 4 saat/gün)</option>
-              <option value="CS3">CS3 (Seans 3 - 19:00 - 21:45 - həftə içi - 3 saat/gün)</option>
-              <option value="CS4">CS4 (Seans 4 - 10:00 - 14:45 - həftə sonu - 5 saat/gün)</option>
-              <option value="CS5">CS5 (Seans 5 - 15:30 - 20:15 - həftə sonu - 5 saat/gün)</option>
-            </select>
+<!-- Groups Management Page -->
+<div id="groupsPage" class="tab-page">
+  <div class="grid">
+    <div>
+      <div class="card">
+        <h3>Qrup əlavə et / redaktə et</h3>
+        <label>Qrup adı</label>
+        <input id="groupName" placeholder="Məs: CS1-Az" />
 
-            <label>Başlanğıc tarixi (gün/ay/il)</label>
-            <input id="startDate" placeholder="01/10/2025" />
+        <label>Qrup kodu (Seans Seçimi)</label>
+        <select id="groupCode">
+          <option value="CS1">CS1 (Seans 1 - 09:00 - 13:00 - həftə içi - 4 saat/gün)</option>
+          <option value="CS2">CS2 (Seans 2 - 14:00 - 18:00 - həftə içi - 4 saat/gün)</option>
+          <option value="CS3">CS3 (Seans 3 - 19:00 - 21:45 - həftə içi - 3 saat/gün)</option>
+          <option value="CS4">CS4 (Seans 4 - 10:00 - 14:45 - həftə sonu - 5 saat/gün)</option>
+          <option value="CS5">CS5 (Seans 5 - 15:30 - 20:15 - həftə sonu - 5 saat/gün)</option>
+        </select>
 
-            <label>Hər modul üçün tələb olunan ümumi saat</label>
-            <div id="modulesInputs"></div>
+        <label>Başlanğıc tarixi (gün/ay/il)</label>
+        <input id="startDate" placeholder="01/10/2025" />
 
-            <div style="margin-top:10px">
-              <button id="addGroupBtn" class="btn">Qrupu Yarat / Yenilə</button>
-              <button id="clearBtn" class="btn secondary" style="margin-left:8px">Formu Təmizlə</button>
-            </div>
-          </div>
+        <label>Hər modul üçün tələb olunan ümumi saat</label>
+        <div id="modulesInputs"></div>
 
-          <div class="card" style="margin-top:12px">
-            <h3>Müəllimlər və Köməkçilər</h3>
-            <label>Ad Soyad</label>
-            <input id="teacherName" placeholder="Ad Soyad" />
-            
-            <label>Rol</label>
-            <select id="teacherRole">
-              <option value="teacher">Müəllim</option>
-              <option value="ta">TA (Köməkçi)</option>
-              <option value="both">Müəllim/TA</option>
-            </select>
-            
-            <button id="addTeacherBtn" class="btn" style="margin-top:6px">Əlavə et</button>
-
-            <label style="margin-top:8px">Mövcud siyahı</label>
-            <div id="teacherList" class="teacher-list small"></div>
-          </div>
-        </div>
-
-        <div>
-          <div class="card">
-            <div class="tab-buttons">
-              <button class="tab-btn active" data-tab="active">Aktiv Qruplar</button>
-              <button class="tab-btn" data-tab="archive">Arxiv</button>
-            </div>
-            
-            <div id="activeGroupsTab" class="tab-content active">
-              <h3>Aktiv Qruplar</h3>
-              <div id="groupsList" class="small"></div>
-            </div>
-            
-            <div id="archiveTab" class="tab-content">
-              <h3>Arxivlənmiş Qruplar</h3>
-              <div id="archivedGroupsList" class="small"></div>
-            </div>
-            
-            <div class="group-details-container" id="groupDetails">Seçim edilməyib</div>
-          </div>
-          
-          <div class="card" style="margin-top:12px">
-              <h3>Rəsmi Bayramlar (Qeyri-iş günləri)</h3>
-              <p class="small muted">Seçilmiş bayram günləri, dərslərin hesablanmasında qeyri-dərs günü (tətil) kimi nəzərə alınacaq.</p>
-              <div style="margin-bottom: 10px;display:flex;gap:8px;flex-wrap:wrap;">
-                  <button id="selectAllHolidaysBtn" class="btn secondary">Hamısını Seç</button>
-                  <button id="addCustomHolidayBtn" class="btn secondary">Bayram Əlavə Et</button>
-                  <button id="manageHolidaysBtn" class="btn secondary">İdarə Et</button>
-              </div>
-              <div id="holidaysList" style="max-height: 250px; overflow-y: auto; padding-right: 10px; margin-top: 8px;"></div>
-              <div style="margin-top: 10px;">
-                <button id="saveHolidaysBtn" class="btn">Bayram Qərarlarını Saxla</button>
-              </div>
-          </div>
+        <div style="margin-top:10px">
+          <button id="addGroupBtn" class="btn">Qrupu Yarat / Yenilə</button>
+          <button id="clearBtn" class="btn secondary" style="margin-left:8px">Formu Təmizlə</button>
         </div>
       </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <div class="tab-buttons">
+          <button class="tab-btn active" data-tab="active">Aktiv Qruplar</button>
+          <button class="tab-btn" data-tab="archive">Arxiv</button>
+        </div>
+        
+        <div id="activeGroupsTab" class="tab-content active">
+          <h3>Aktiv Qruplar</h3>
+          <div id="groupsList" class="small"></div>
+        </div>
+        
+        <div id="archiveTab" class="tab-content">
+          <h3>Arxivlənmiş Qruplar</h3>
+          <div id="archivedGroupsList" class="small"></div>
+        </div>
+        
+        <div class="group-details-container" id="groupDetails">Seçim edilməyib</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Teachers Page -->
+<div id="teachersPage" class="tab-page">
+  <div class="card">
+    <h3>Müəllimlər və Köməkçilər</h3>
+    <label>Ad Soyad</label>
+    <input id="teacherName" placeholder="Ad Soyad" />
+    
+    <label>Rol</label>
+    <select id="teacherRole">
+      <option value="teacher">Müəllim</option>
+      <option value="ta">TA (Köməkçi)</option>
+      <option value="both">Müəllim/TA</option>
+    </select>
+    
+    <button id="addTeacherBtn" class="btn" style="margin-top:6px">Əlavə et</button>
+
+    <label style="margin-top:8px">Mövcud siyahı</label>
+    <div id="teacherList" class="teacher-list small"></div>
+  </div>
+</div>
+
+<!-- Holidays Page -->
+<div id="holidaysPage" class="tab-page">
+  <div class="card">
+    <h3>Rəsmi Bayramlar (Qeyri-iş günləri)</h3>
+    <p class="small muted">Seçilmiş bayram günləri, dərslərin hesablanmasında qeyri-dərs günü (tətil) kimi nəzərə alınacaq.</p>
+    <div style="margin-bottom: 10px;display:flex;gap:8px;flex-wrap:wrap;">
+      <button id="selectAllHolidaysBtn" class="btn secondary">Hamısını Seç</button>
+      <button id="addCustomHolidayBtn" class="btn secondary">Bayram Əlavə Et</button>
+      <button id="manageHolidaysBtn" class="btn secondary">İdarə Et</button>
+    </div>
+    <div id="holidaysList" style="max-height: 250px; overflow-y: auto; padding-right: 10px; margin-top: 8px;"></div>
+    <div style="margin-top: 10px;">
+      <button id="saveHolidaysBtn" class="btn">Bayram Qərarlarını Saxla</button>
+    </div>
+  </div>
+</div>
 
       <footer>Sistem Firebase Firestore üzərində işləyir və məlumatları sinxronlaşdırır. 🔒 Təhlükəsiz giriş aktiv.</footer>
     </div>
@@ -1928,6 +1966,184 @@ function saveAllNotes() {
     saveState();
     alert('Bütün qeydlər saxlanıldı! ✓');
 }
+
+// Tab Navigation
+document.querySelectorAll('.main-tab').forEach(tab => {
+  tab.onclick = () => {
+    document.querySelectorAll('.main-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-page').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById(tab.dataset.page + 'Page').classList.add('active');
+    
+    if (tab.dataset.page === 'dashboard') {
+      renderDashboard();
+    }
+  };
+});
+
+// Dashboard Render Function
+function renderDashboard() {
+  const container = document.getElementById('dashboardContent');
+  const activeGroups = state.groups.filter(g => !g.archived);
+  
+  if (activeGroups.length === 0) {
+    container.innerHTML = '<div class="dashboard-card"><p class="muted">Aktiv qrup yoxdur. Qrup əlavə edin.</p></div>';
+    return;
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  let html = '<div class="dashboard-grid">';
+  
+  // Yaxın tarixli qeydlər
+  html += '<div class="dashboard-card">';
+  html += '<h3 style="margin-top:0;">📝 Yaxın Həftəlik Qeydlər</h3>';
+  
+  let upcomingNotes = [];
+  activeGroups.forEach(g => {
+    const notes = g.weeklyNotes || {};
+    Object.keys(notes).forEach(dateStr => {
+      const noteDate = parseDateDMY(dateStr);
+      const daysDiff = Math.ceil((noteDate - today) / (1000 * 60 * 60 * 24));
+      
+      if (daysDiff >= -7 && daysDiff <= 14) {
+        upcomingNotes.push({
+          group: g.name,
+          date: dateStr,
+          dateObj: noteDate,
+          daysDiff: daysDiff,
+          status: notes[dateStr].status,
+          text: notes[dateStr].text
+        });
+      }
+    });
+  });
+  
+  upcomingNotes.sort((a, b) => a.dateObj - b.dateObj);
+  
+  if (upcomingNotes.length === 0) {
+    html += '<p class="small muted">Yaxın tarixdə qeyd yoxdur.</p>';
+  } else {
+    upcomingNotes.slice(0, 5).forEach(note => {
+      const statusColor = note.status === 'green' ? 'var(--green)' : 
+                         note.status === 'orange' ? 'var(--orange)' : 'var(--yellow)';
+      const statusText = note.status === 'green' ? '✓ Həll olundu' : 
+                        note.status === 'orange' ? '⚠️ Bu həftə HƏLL' : '⏳ Gələn həftə';
+      const daysText = note.daysDiff === 0 ? 'Bu gün' : 
+                      note.daysDiff === 1 ? 'Sabah' : 
+                      note.daysDiff > 0 ? `${note.daysDiff} gün sonra` : 
+                      `${Math.abs(note.daysDiff)} gün əvvəl`;
+      
+      html += `<div style="padding:10px;border-left:4px solid ${statusColor};background:#f9fafb;margin-bottom:8px;border-radius:4px;">
+        <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:5px;">
+          <strong style="font-size:13px;">${note.group}</strong>
+          <span style="font-size:11px;color:var(--muted);">${daysText}</span>
+        </div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:4px;">${note.date} - ${statusText}</div>
+        ${note.text ? `<div style="font-size:12px;">${note.text}</div>` : ''}
+      </div>`;
+    });
+  }
+  
+  html += '</div>';
+  
+  // Statistika kartı
+  html += '<div class="dashboard-card">';
+  html += '<h3 style="margin-top:0;">📈 Statistika</h3>';
+  html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;">
+    <div style="text-align:center;padding:15px;background:#e0f2fe;border-radius:6px;">
+      <div style="font-size:32px;font-weight:700;color:var(--blue);">${activeGroups.length}</div>
+      <div style="font-size:13px;color:var(--muted);margin-top:5px;">Aktiv Qrup</div>
+    </div>
+    <div style="text-align:center;padding:15px;background:#fef3c7;border-radius:6px;">
+      <div style="font-size:32px;font-weight:700;color:#92400e;">${state.teachers.length}</div>
+      <div style="font-size:13px;color:var(--muted);margin-top:5px;">Müəllim</div>
+    </div>
+  </div>`;
+  html += '</div>';
+  
+  html += '</div>'; // grid end
+  
+  // Aktiv qrupların modul statusu
+  html += '<div class="dashboard-card">';
+  html += '<h3 style="margin-top:0;">🎯 Aktiv Qrupların Modul Statusu</h3>';
+  
+  activeGroups.forEach(g => {
+    const schedule = computeScheduleForGroup(g);
+    let currentModule = null;
+    let nextModule = null;
+    
+    schedule.forEach((s, idx) => {
+      const startDate = parseDateDMY(s.start);
+      const endDate = parseDateDMY(s.end);
+      
+      if (today >= startDate && today <= endDate) {
+        currentModule = s;
+      } else if (today < startDate && !nextModule) {
+        nextModule = s;
+      }
+    });
+    
+    html += `<div style="border:1px solid #e6edf3;border-radius:6px;padding:12px;margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <div>
+          <strong style="font-size:15px;">${g.name}</strong>
+          <span class="badge" style="background:#e9d5ff;color:#6b21a8;margin-left:8px;">${g.code}</span>
+        </div>
+      </div>`;
+    
+    if (currentModule) {
+      const totalDays = Math.ceil((parseDateDMY(currentModule.end) - parseDateDMY(currentModule.start)) / (1000 * 60 * 60 * 24)) + 1;
+      const passedDays = Math.ceil((today - parseDateDMY(currentModule.start)) / (1000 * 60 * 60 * 24)) + 1;
+      const remainingDays = Math.ceil((parseDateDMY(currentModule.end) - today) / (1000 * 60 * 60 * 24));
+      const progress = Math.min(100, Math.max(0, (passedDays / totalDays) * 100));
+      
+      html += `<div class="module-progress">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
+          <span style="font-size:13px;font-weight:600;">📚 ${currentModule.module}</span>
+          <span class="status-badge active">Davam edir</span>
+        </div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:5px;">
+          ${currentModule.start} - ${currentModule.end} | Müəllim: ${currentModule.teacher || 'Təyin olunmayıb'}
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:3px;">
+          <span>${passedDays} gün keçdi</span>
+          <span>${remainingDays} gün qalıb</span>
+        </div>
+        <div class="module-progress-bar">
+          <div class="module-progress-fill" style="width:${progress}%;"></div>
+        </div>
+      </div>`;
+    } else if (nextModule) {
+      const daysUntilStart = Math.ceil((parseDateDMY(nextModule.start) - today) / (1000 * 60 * 60 * 24));
+      html += `<div class="module-progress">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
+          <span style="font-size:13px;font-weight:600;">📚 ${nextModule.module}</span>
+          <span class="status-badge" style="background:#fef3c7;color:#92400e;">Gözləmədə</span>
+        </div>
+        <div style="font-size:12px;color:var(--muted);">
+          ${daysUntilStart} gün sonra başlayacaq (${nextModule.start})
+        </div>
+      </div>`;
+    } else {
+      html += '<p class="small muted">Modul məlumatı yoxdur.</p>';
+    }
+    
+    html += '</div>';
+  });
+  
+  html += '</div>';
+  
+  container.innerHTML = html;
+}
+
+// İlk yüklənmədə dashboard göstər
+setTimeout(() => {
+  if (auth.currentUser) {
+    renderDashboard();
+  }
+}, 500);
 
 updateModuleHours(groupCodeInput.value);
 </script>

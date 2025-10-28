@@ -519,20 +519,101 @@
     });
 
     function updateModuleHours(groupCode) {
-        let defaultHours;
-        if (['CS1', 'CS2'].includes(groupCode)) defaultHours = DEFAULT_MODULE_HOURS['CS1/CS2'];
-        else if (groupCode === 'CS3') defaultHours = DEFAULT_MODULE_HOURS['CS3'];
-        else if (['CS4', 'CS5'].includes(groupCode)) defaultHours = DEFAULT_MODULE_HOURS['CS4/CS5'];
-        else defaultHours = MODULES.reduce((acc, m) => { acc[m] = 40; return acc; }, {});
+    let defaultHours;
+    if (['CS1', 'CS2'].includes(groupCode)) defaultHours = DEFAULT_MODULE_HOURS['CS1/CS2'];
+    else if (groupCode === 'CS3') defaultHours = DEFAULT_MODULE_HOURS['CS3'];
+    else if (['CS4', 'CS5'].includes(groupCode)) defaultHours = DEFAULT_MODULE_HOURS['CS4/CS5'];
+    else defaultHours = {};
 
-        modulesInputs.innerHTML = '';
-        MODULES.forEach(m => {
-            const defaultVal = defaultHours[m] || 40;
-            const div = document.createElement('div'); div.className='module-row';
-            div.innerHTML = `<div style="flex:1"><label>${m}</label></div><input type="number" min="1" value="${defaultVal}" data-module="${m}" style="width:110px" />`;
-            modulesInputs.appendChild(div);
-        });
+    modulesInputs.innerHTML = '';
+    
+    // Mövcud qrup varsa onun modullarını göstər, yoxsa MODULES array-dən götür
+    const groupName = groupNameInput.value.trim();
+    const existingGroup = state.groups.find(g => g.name === groupName);
+    const modulesToShow = existingGroup && existingGroup.moduleHours 
+        ? Object.keys(existingGroup.moduleHours) 
+        : MODULES;
+
+    modulesToShow.forEach(m => {
+        const defaultVal = (existingGroup && existingGroup.moduleHours[m]) 
+            ? existingGroup.moduleHours[m] 
+            : (defaultHours[m] || 40);
+        
+        const div = document.createElement('div'); 
+        div.className='module-row';
+        div.style.display='flex';
+        div.style.gap='8px';
+        div.style.alignItems='center';
+        div.style.marginBottom='8px';
+        
+        div.innerHTML = `
+            <input type="text" value="${m}" data-module-name="${m}" placeholder="Modul adı" 
+                   style="flex:2;padding:8px;border:1px solid #e6edf3;border-radius:6px;" />
+            <input type="number" min="1" value="${defaultVal}" data-module-hours="${m}" 
+                   style="width:110px;padding:8px;" placeholder="Saat" />
+            <button class="btn danger" onclick="deleteModule('${m}')" 
+                    style="width:auto;padding:6px 10px;font-size:12px;">🗑️ Sil</button>
+        `;
+        modulesInputs.appendChild(div);
+    });
+
+    // "Yeni modul əlavə et" düyməsi
+    const addBtn = document.createElement('button');
+    addBtn.className = 'btn success';
+    addBtn.textContent = '➕ Yeni Modul Əlavə Et';
+    addBtn.style.marginTop = '10px';
+    addBtn.onclick = addNewModule;
+    modulesInputs.appendChild(addBtn);
+}
+
+function addNewModule() {
+    const moduleName = prompt('Yeni modul adını daxil edin:');
+    if (!moduleName || moduleName.trim() === '') return;
+    
+    const trimmedName = moduleName.trim();
+    
+    // Yoxla ki, artıq bu adda modul var?
+    const existingInputs = document.querySelectorAll('[data-module-name]');
+    for (let inp of existingInputs) {
+        if (inp.value.trim() === trimmedName) {
+            alert('Bu adda modul artıq mövcuddur!');
+            return;
+        }
     }
+    
+    // Yeni modul əlavə et
+    const div = document.createElement('div'); 
+    div.className='module-row';
+    div.style.display='flex';
+    div.style.gap='8px';
+    div.style.alignItems='center';
+    div.style.marginBottom='8px';
+    
+    div.innerHTML = `
+        <input type="text" value="${trimmedName}" data-module-name="${trimmedName}" placeholder="Modul adı" 
+               style="flex:2;padding:8px;border:1px solid #e6edf3;border-radius:6px;" />
+        <input type="number" min="1" value="40" data-module-hours="${trimmedName}" 
+               style="width:110px;padding:8px;" placeholder="Saat" />
+        <button class="btn danger" onclick="deleteModule('${trimmedName}')" 
+                style="width:auto;padding:6px 10px;font-size:12px;">🗑️ Sil</button>
+    `;
+    
+    // "Yeni modul əlavə et" düyməsindən əvvəl əlavə et
+    const addButton = modulesInputs.querySelector('button');
+    modulesInputs.insertBefore(div, addButton);
+}
+
+function deleteModule(moduleName) {
+    if (!confirm(`"${moduleName}" modulunu silmək istədiyinizdən əminsiniz?`)) return;
+    
+    // Input-u tap və sil
+    const inputs = document.querySelectorAll('[data-module-name]');
+    inputs.forEach(inp => {
+        if (inp.value === moduleName) {
+            inp.closest('.module-row').remove();
+        }
+    });
+}
 
     groupCodeInput.onchange = (e) => updateModuleHours(e.target.value);
     
@@ -1718,8 +1799,22 @@ addGroupBtn.onclick = ()=>{
   const start = startDateInput.value.trim(); 
   if(!/^\d{2}\/\d{2}\/\d{4}$/.test(start)) return alert('Tarix formatı dd/mm/yyyy olmalıdır');
   
+  // Modulları topla (həm adları həm də saatları)
   const moduleHours = {};
-  document.querySelectorAll('[data-module]').forEach(inp=> moduleHours[inp.dataset.module] = Number(inp.value||40));
+  const moduleNameInputs = document.querySelectorAll('[data-module-name]');
+  const moduleHourInputs = document.querySelectorAll('[data-module-hours]');
+  
+  moduleNameInputs.forEach((nameInput, idx) => {
+      const moduleName = nameInput.value.trim();
+      const hours = Number(moduleHourInputs[idx].value || 40);
+      if (moduleName) {
+          moduleHours[moduleName] = hours;
+      }
+  });
+
+  if (Object.keys(moduleHours).length === 0) {
+      return alert('Ən azı 1 modul əlavə edin!');
+  }
 
   const existingIndex = state.groups.findIndex(g=>g.name===name);
   const groupObj = {
@@ -1739,6 +1834,13 @@ addGroupBtn.onclick = ()=>{
   saveState();
   alert('Qrup yaradıldı / yeniləndi');
 }
+  
+  if(existingIndex===-1) state.groups.push(groupObj); 
+  else state.groups[existingIndex]=groupObj;
+  
+  saveState();
+  alert('Qrup yaradıldı / yeniləndi');
+}
 
 clearBtn.onclick = ()=>{ 
   groupNameInput.value=''; 
@@ -1751,8 +1853,17 @@ groupsList.onclick = (e)=>{
   if(!btn) return;
   
   if(btn.classList.contains('normal-open-btn')){ 
-      renderGroupDetails(Number(btn.dataset.idx), groupDetails); 
-  }
+    const idx = Number(btn.dataset.idx);
+    const g = state.groups[idx];
+    
+    // Qrupun məlumatlarını forma yüklə
+    groupNameInput.value = g.name;
+    groupCodeInput.value = g.code;
+    startDateInput.value = g.startDate;
+    updateModuleHours(g.code);
+    
+    renderGroupDetails(idx, groupDetails); 
+}
   else if(btn.classList.contains('popup-open-btn')){
       openGroupDetailsPopup(Number(btn.dataset.idx));
   }

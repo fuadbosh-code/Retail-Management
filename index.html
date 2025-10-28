@@ -1,0 +1,1936 @@
+<!doctype html>
+<html lang="az">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>IT Tədris Proqramı - Giriş</title>
+  
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="https://code.edu.az/wp-content/uploads/2024/07/cropped-favicon-codeeduaz-180x180_png.webp" />
+  <link rel="apple-touch-icon" href="https://code.edu.az/wp-content/uploads/2024/07/cropped-favicon-codeeduaz-180x180_png.webp" />
+  
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+  <style>
+    :root{--green:#2ecc71;--yellow:#f1c40f;--orange:#e67e22;--red:#e74c3c;--muted:#6b7280;--blue:#2563eb;--light-blue:#eef2ff;--purple:#8b5cf6;}
+    body{font-family:Inter,ui-sans-serif,system-ui,Segoe UI,Roboto,'Helvetica Neue',Arial;margin:0;padding:20px;background:#f7fafc;color:#0f172a}
+    h1{font-size:20px;margin-bottom:8px; display:inline-block;}
+    .header-flex{display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px;}
+    .container{max-width:1400px;margin:0 auto;background:#fff;padding:18px;border-radius:8px;box-shadow:0 6px 20px rgba(2,6,23,0.06)}
+    label{display:block;margin:8px 0 4px;font-size:13px;color:var(--muted)}
+    input,select,button,textarea{padding:8px 10px;border:1px solid #e6edf3;border-radius:6px;font-size:14px;width:100%;box-sizing:border-box;}
+    input[type="number"]{width:auto;}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+    .card{background:#fff;padding:12px;border-radius:8px;border:1px solid #f0f5f9}
+    table{width:100%;border-collapse:collapse;margin-top:10px;display:block;overflow-x:auto;white-space:nowrap;}
+    th,td{padding:8px;border-bottom:1px solid #f3f6f8;text-align:left;font-size:13px}
+    th{background:#f9fafb;font-weight:600}
+    .small{font-size:12px;color:var(--muted)}
+    .module-row{display:flex;gap:8px;align-items:center}
+    .status-dot{width:12px;height:12px;border-radius:50%;display:inline-block;margin-right:6px}
+    .btn{background:var(--blue);color:#fff;border:0;padding:8px 10px;border-radius:6px;cursor:pointer;font-size:13px;width:auto;}
+    .btn.secondary{background:var(--light-blue);color:#111}
+    .btn.danger{background:var(--red);color:#fff;}
+    .btn.success{background:var(--green);color:#fff;}
+    .btn.purple{background:var(--purple);color:#fff;}
+    .teacher-list{max-height:160px;overflow:auto;border:1px dashed #e6eef8;padding:8px;border-radius:6px}
+    .teacher-item{display:flex;justify-content:space-between;align-items:center;padding:6px;border-bottom:1px solid #f0f5f9;cursor:pointer;}
+    .teacher-item:hover{background:#f9fafb;}
+    .teacher-item-actions{display:flex;gap:4px;}
+    .teacher-item-actions button{padding:4px 8px;font-size:11px;}
+    .note-row{display:flex;gap:8px;align-items:center}
+    .muted{color:var(--muted)}
+    footer{margin-top:20px;font-size:12px;color:var(--muted);text-align:center}
+    .danger{color:var(--red)}
+    .ok{color:var(--green)}
+    .holiday-item{display:flex;align-items:center;margin-bottom:6px;font-size:13px}
+    .holiday-item input{margin-right:8px;width:16px;height:16px}
+    .group-details-container{border:1px solid #e6edf3;border-radius:6px;padding:15px;margin-top:12px;background:#fcfdff;max-height:800px;overflow-y:auto;}
+    .select-status-green{background:var(--green);color:white}
+    .select-status-yellow{background:var(--yellow);color:#333}
+    .select-status-orange{background:var(--orange);color:white}
+    .select-status-green option[value="green"]{background:var(--green);color:white}
+    .select-status-green option[value="yellow"]{background:var(--yellow);color:#333}
+    .select-status-green option[value="orange"]{background:var(--orange);color:white}
+    .select-status-yellow option[value="green"]{background:var(--green);color:white}
+    .select-status-yellow option[value="yellow"]{background:var(--yellow);color:#333}
+    .select-status-yellow option[value="orange"]{background:var(--orange);color:white}
+    .select-status-orange option[value="green"]{background:var(--green);color:white}
+    .select-status-orange option[value="yellow"]{background:var(--yellow);color:#333}
+    .select-status-orange option[value="orange"]{background:var(--orange);color:white}
+    .assignment-cell{display:flex;gap:4px;align-items:center;flex-wrap:wrap;}
+    .assignment-cell select{flex:1;min-width:150px;}
+    .assignment-cell button{flex-shrink:0}
+    .teacher-select-busy{background-color: var(--red); color: white;}
+    .teacher-select-tired{background-color: var(--muted); color: white;}
+    .dashboard-btn{padding: 8px 15px; background: var(--orange); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;}
+    .badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;margin-left:6px;}
+    .badge-teacher{background:#e0f2fe;color:#0369a1;}
+    .badge-ta{background:#fef3c7;color:#92400e;}
+    .badge-both{background:#e9d5ff;color:#6b21a8;}
+    .archived-group{opacity:0.6;background:#f9fafb;}
+    
+    /* Login Screen */
+    .login-container{max-width:400px;margin:100px auto;background:#fff;padding:40px;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,0.1)}
+    .login-container h2{margin:0 0 20px;text-align:center;color:var(--blue)}
+    .login-container input{margin-bottom:15px;}
+    .login-container .btn{width:100%;margin-top:10px;}
+    .error-msg{background:#fee;color:var(--red);padding:10px;border-radius:6px;margin-bottom:15px;font-size:13px;display:none;}
+    .user-info{display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--light-blue);border-radius:6px;font-size:13px;}
+    
+    /* Modal */
+    .modal{display:none;position:fixed;z-index:1000;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,0.5);overflow:auto;}
+    .modal.active{display:flex;align-items:center;justify-content:center;}
+    .modal-content{background:#fff;padding:25px;border-radius:12px;max-width:600px;width:90%;max-height:90vh;overflow-y:auto;}
+    .modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;}
+    .modal-header h3{margin:0;}
+    .modal-close{background:none;border:none;font-size:24px;cursor:pointer;color:var(--muted);padding:0;width:auto;}
+    .modal-close:hover{color:var(--red);}
+    
+    /* Teacher Profile */
+    .profile-img-preview{width:120px;height:120px;border-radius:50%;object-fit:cover;border:3px solid var(--blue);margin:10px auto;display:block;}
+    .profile-img-placeholder{width:120px;height:120px;border-radius:50%;background:var(--light-blue);display:flex;align-items:center;justify-content:center;margin:10px auto;font-size:48px;color:var(--blue);}
+    
+    @media (max-width: 768px) {
+      body{padding:10px;}
+      .container{padding:12px;}
+      h1{font-size:18px;}
+      .header-flex{flex-direction:column;}
+      .dashboard-btn{width:100%;margin-top:10px;}
+      .grid{grid-template-columns:1fr;gap:12px;}
+      table{font-size:11px;}
+      th,td{padding:6px 4px;font-size:11px;}
+      input,select,button,textarea{font-size:13px;padding:7px 8px;}
+      .btn{font-size:12px;padding:7px 10px;margin:2px 0;}
+      .card{padding:10px;}
+      .group-details-container{padding:10px;max-height:600px;}
+      .assignment-cell{flex-direction:column;align-items:stretch;}
+      .assignment-cell select{width:100%;min-width:auto;}
+      .assignment-cell button{width:100%;margin-top:5px;}
+      .module-row{flex-direction:column;align-items:stretch;}
+      .module-row div{width:100%;}
+      .module-row input{width:100%!important;margin-top:5px;}
+      .holiday-item{font-size:12px;}
+      .teacher-list{max-height:120px;font-size:11px;}
+      .login-container{margin:50px auto;padding:30px;}
+      .modal-content{padding:20px;width:95%;}
+    }
+    
+    @media (max-width: 480px) {
+      body{padding:5px;}
+      .container{padding:8px;border-radius:4px;}
+      h1{font-size:16px;}
+      .card{padding:8px;}
+      table{font-size:10px;}
+      th,td{padding:4px 2px;font-size:10px;}
+      .small{font-size:11px;}
+      input,select,button,textarea{font-size:12px;padding:6px;}
+      .btn{font-size:11px;padding:6px 8px;}
+      .login-container{padding:20px;}
+      .modal-content{padding:15px;}
+    }
+    
+    .hidden{display:none!important;}
+    .tab-buttons{display:flex;gap:8px;margin-bottom:15px;flex-wrap:wrap;}
+    .tab-btn{padding:8px 16px;background:#f0f5f9;border:1px solid #e6edf3;border-radius:6px;cursor:pointer;font-size:13px;}
+    .tab-btn.active{background:var(--blue);color:#fff;border-color:var(--blue);}
+    .tab-content{display:none;}
+    .tab-content.active{display:block;}
+  </style>
+</head>
+<body>
+  
+  <!-- LOGIN SCREEN -->
+  <div id="loginScreen" class="login-container">
+    <h2>🔐 Giriş</h2>
+    <div id="loginError" class="error-msg"></div>
+    <label>Email</label>
+    <input type="email" id="loginEmail" placeholder="email@example.com" />
+    <label>Şifrə</label>
+    <input type="password" id="loginPassword" placeholder="••••••••" />
+    <button id="loginBtn" class="btn">Daxil ol</button>
+  </div>
+
+  <!-- MAIN APP (hidden until login) -->
+  <div id="mainApp" class="hidden">
+    <div class="container">
+      <div class="header-flex">
+        <div>
+          <h1>IT Tədris Proqramı - Modul Planlayıcı</h1>
+          <div id="userInfo" class="user-info"></div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button id="openDashboardBtn" class="dashboard-btn">Müəllimlər Tablosu</button>
+          <button id="openGroupsTableBtn" class="dashboard-btn">Qruplar Tablosu</button>
+          <button id="openGradingBtn" class="btn purple">Qiymətləndirmə</button>
+		  <button id="openAllNotesBtn" class="btn purple">Bütün Qeydlər</button>
+          <button id="logoutBtn" class="btn danger">Çıxış</button>
+        </div>
+      </div>
+      <p class="small">Bu tətbiq Firebase Database ilə sinxronizasiya olunur. Tarix formatı: <strong>gün/ay/il</strong>.</p>
+
+      <div class="grid">
+        <div>
+          <div class="card">
+            <h3>Qrup əlavə et / redaktə et</h3>
+            <label>Qrup adı</label>
+            <input id="groupName" placeholder="Məs: CS1-Az" />
+
+            <label>Qrup kodu (Seans Seçimi)</label>
+            <select id="groupCode">
+              <option value="CS1">CS1 (Seans 1 - 09:00 - 13:00 - həftə içi - 4 saat/gün)</option>
+              <option value="CS2">CS2 (Seans 2 - 14:00 - 18:00 - həftə içi - 4 saat/gün)</option>
+              <option value="CS3">CS3 (Seans 3 - 19:00 - 21:45 - həftə içi - 3 saat/gün)</option>
+              <option value="CS4">CS4 (Seans 4 - 10:00 - 14:45 - həftə sonu - 5 saat/gün)</option>
+              <option value="CS5">CS5 (Seans 5 - 15:30 - 20:15 - həftə sonu - 5 saat/gün)</option>
+            </select>
+
+            <label>Başlanğıc tarixi (gün/ay/il)</label>
+            <input id="startDate" placeholder="01/10/2025" />
+
+            <label>Hər modul üçün tələb olunan ümumi saat</label>
+            <div id="modulesInputs"></div>
+
+            <div style="margin-top:10px">
+              <button id="addGroupBtn" class="btn">Qrupu Yarat / Yenilə</button>
+              <button id="clearBtn" class="btn secondary" style="margin-left:8px">Formu Təmizlə</button>
+            </div>
+          </div>
+
+          <div class="card" style="margin-top:12px">
+            <h3>Müəllimlər və Köməkçilər</h3>
+            <label>Ad Soyad</label>
+            <input id="teacherName" placeholder="Ad Soyad" />
+            
+            <label>Rol</label>
+            <select id="teacherRole">
+              <option value="teacher">Müəllim</option>
+              <option value="ta">TA (Köməkçi)</option>
+              <option value="both">Müəllim/TA</option>
+            </select>
+            
+            <button id="addTeacherBtn" class="btn" style="margin-top:6px">Əlavə et</button>
+
+            <label style="margin-top:8px">Mövcud siyahı</label>
+            <div id="teacherList" class="teacher-list small"></div>
+          </div>
+        </div>
+
+        <div>
+          <div class="card">
+            <div class="tab-buttons">
+              <button class="tab-btn active" data-tab="active">Aktiv Qruplar</button>
+              <button class="tab-btn" data-tab="archive">Arxiv</button>
+            </div>
+            
+            <div id="activeGroupsTab" class="tab-content active">
+              <h3>Aktiv Qruplar</h3>
+              <div id="groupsList" class="small"></div>
+            </div>
+            
+            <div id="archiveTab" class="tab-content">
+              <h3>Arxivlənmiş Qruplar</h3>
+              <div id="archivedGroupsList" class="small"></div>
+            </div>
+            
+            <div class="group-details-container" id="groupDetails">Seçim edilməyib</div>
+          </div>
+          
+          <div class="card" style="margin-top:12px">
+              <h3>Rəsmi Bayramlar (Qeyri-iş günləri)</h3>
+              <p class="small muted">Seçilmiş bayram günləri, dərslərin hesablanmasında qeyri-dərs günü (tətil) kimi nəzərə alınacaq.</p>
+              <div style="margin-bottom: 10px;display:flex;gap:8px;flex-wrap:wrap;">
+                  <button id="selectAllHolidaysBtn" class="btn secondary">Hamısını Seç</button>
+                  <button id="addCustomHolidayBtn" class="btn secondary">Bayram Əlavə Et</button>
+                  <button id="manageHolidaysBtn" class="btn secondary">İdarə Et</button>
+              </div>
+              <div id="holidaysList" style="max-height: 250px; overflow-y: auto; padding-right: 10px; margin-top: 8px;"></div>
+              <div style="margin-top: 10px;">
+                <button id="saveHolidaysBtn" class="btn">Bayram Qərarlarını Saxla</button>
+              </div>
+          </div>
+        </div>
+      </div>
+
+      <footer>Sistem Firebase Firestore üzərində işləyir və məlumatları sinxronlaşdırır. 🔒 Təhlükəsiz giriş aktiv.</footer>
+    </div>
+  </div>
+
+  <!-- Teacher Profile Modal -->
+  <div id="teacherProfileModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Müəllim Profili</h3>
+        <button class="modal-close" onclick="closeTeacherProfile()">&times;</button>
+      </div>
+      <div id="teacherProfileContent"></div>
+    </div>
+  </div>
+
+  <!-- Custom Holiday Modal -->
+  <div id="customHolidayModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Bayram Əlavə Et</h3>
+        <button class="modal-close" onclick="closeCustomHolidayModal()">&times;</button>
+      </div>
+      <label>Tarix (gün/ay/il)</label>
+      <input id="customHolidayDate" placeholder="01/01/2025" />
+      <label>Bayramın adı</label>
+      <input id="customHolidayName" placeholder="Bayram adı" />
+      <div style="margin-top:15px;display:flex;gap:8px;">
+        <button class="btn" onclick="saveCustomHoliday()">Əlavə Et</button>
+        <button class="btn secondary" onclick="closeCustomHolidayModal()">Ləğv et</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Manage Holidays Modal -->
+  <div id="manageHolidaysModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Bayramları İdarə Et</h3>
+        <button class="modal-close" onclick="closeManageHolidaysModal()">&times;</button>
+      </div>
+      <div id="manageHolidaysContent" style="max-height:400px;overflow-y:auto;"></div>
+    </div>
+  </div>
+
+  <!-- Grading Modal -->
+  <div id="gradingModal" class="modal">
+    <div class="modal-content" style="max-width:900px;">
+      <div class="modal-header">
+        <h3>Qiymətləndirmə Sistemi</h3>
+        <button class="modal-close" onclick="closeGradingModal()">&times;</button>
+      </div>
+      <div id="gradingContent"></div>
+    </div>
+  </div>
+  
+  <!-- All Notes Modal -->
+<div id="allNotesModal" class="modal">
+  <div class="modal-content" style="max-width:95%;max-height:90vh;">
+    <div class="modal-header">
+      <h3>Bütün Qrupların Həftəlik Qeydləri</h3>
+      <button class="modal-close" onclick="closeAllNotesModal()">&times;</button>
+    </div>
+    <div id="allNotesContent" style="overflow-x:auto;"></div>
+  </div>
+</div>
+ 
+
+<!-- HİSSƏ 1/3 SONU -->
+
+<script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyCavzrvduMbpbhzNiz9b1h4smAKwt4MDxA",
+      authDomain: "retail-management-dd6e1.firebaseapp.com",
+      projectId: "retail-management-dd6e1",
+      storageBucket: "retail-management-dd6e1.firebasestorage.app",
+      messagingSenderId: "741598488693",
+      appId: "1:741598488693:web:72451d3ac99d554d1e303c",
+      measurementId: "G-G342WK46W2"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const auth = firebase.auth();
+    const storage = firebase.storage();
+
+    let state = { 
+      groups:[], 
+      teachers:[], 
+      nonWorkingHolidays: [], 
+      customHolidays: [],
+      archivedGroups: [],
+      grading: {}
+    };
+    const GLOBAL_DOC_ID = 'global_data';
+    
+    const MODULES = [
+      'Network and Network Security Fundamentals',
+      'System Engineering Fundamentals',
+      'Ethical Hacking',
+      'Security Engineering',
+      'IT Governance'
+    ];
+    
+    const DEFAULT_MODULE_HOURS = {
+        'CS1/CS2': {'Network and Network Security Fundamentals': 48, 'System Engineering Fundamentals': 88, 'Ethical Hacking': 104, 'Security Engineering': 96, 'IT Governance': 20},
+        'CS3': {'Network and Network Security Fundamentals': 51, 'System Engineering Fundamentals': 90, 'Ethical Hacking': 105, 'Security Engineering': 93, 'IT Governance': 21},
+        'CS4/CS5': {'Network and Network Security Fundamentals': 50, 'System Engineering Fundamentals': 90, 'Ethical Hacking': 105, 'Security Engineering': 95, 'IT Governance': 20}
+    };
+
+    const HOLIDAYS_RAW = [
+      {date:'01/01/2025', name:'Yeni il'},{date:'02/01/2025', name:'Yeni il'},{date:'03/01/2025', name:'Yeni il'},{date:'20/01/2025', name:'Qara Yanvar'},
+      {date:'08/03/2025', name:'Qadınlar günü'},{date:'10/03/2025', name:'Qadınlar günü (əvəz)'},{date:'20/03/2025', name:'Novruz'},{date:'21/03/2025', name:'Novruz'},
+      {date:'22/03/2025', name:'Novruz'},{date:'23/03/2025', name:'Novruz'},{date:'24/03/2025', name:'Novruz'},{date:'25/03/2025', name:'Novruz'},{date:'26/03/2025', name:'Novruz'},
+      {date:'30/03/2025', name:'Ramazan Bayramı'},{date:'31/03/2025', name:'Ramazan Bayramı'},{date:'01/04/2025', name:'Ramazan Bayramı'},{date:'09/05/2025', name:'Zəfər Günü'},
+      {date:'28/05/2025', name:'Respublika Günü'},{date:'06/06/2025', name:'Qurban Bayramı'},{date:'07/06/2025', name:'Qurban Bayramı'},{date:'09/06/2025', name:'Qurban Bayramı (əvəz)'},
+      {date:'15/06/2025', name:'Milli Qurtuluş Günü'},{date:'16/06/2025', name:'Milli Qurtuluş Günü (əvəz)'},{date:'26/06/2025', name:'Silahlı Qüvvələr Günü'},
+      {date:'18/10/2025', name:'Müstəqilliyin Bərpası Günü'},{date:'08/11/2025', name:'Zəfər Günü'},{date:'09/11/2025', name:'Dövlət Bayrağı Günü'},
+      {date:'12/11/2025', name:'Konstitusiya Günü'},{date:'17/11/2025', name:'Milli Dirçəliş Günü'},{date:'31/12/2025', name:'Dünya Azərbaycanlılarının Həmrəyliyi Günü'}
+    ];
+
+    function parseDateDMY(s) {const [d,m,y] = s.split('/').map(Number); return new Date(y,m-1,d);}
+    function formatDateDMY(date){const d=('0'+date.getDate()).slice(-2); const m=('0'+(date.getMonth()+1)).slice(-2); const y=date.getFullYear(); return `${d}/${m}/${y}`;}
+    function isHoliday(date){
+      const dateStr = formatDateDMY(date); 
+      if (!state.nonWorkingHolidays || state.nonWorkingHolidays.length === 0) return false; 
+      return state.nonWorkingHolidays.includes(dateStr);
+    }
+
+    const SESSIONS = {
+      CS1: {name:'Seans 1 - həftə içi', days:[1,2,3,4,5], hoursPerDay:4, startTime:'09:00', endTime:'13:00'},
+      CS2: {name:'Seans 2 - həftə içi', days:[1,2,3,4,5], hoursPerDay:4, startTime:'14:00', endTime:'18:00'},
+      CS3: {name:'Seans 3 - həftə içi', days:[1,2,3,4,5], hoursPerDay:3, startTime:'19:00', endTime:'21:45'},
+      CS4: {name:'Seans 4 - həftə sonu', days:[6,0], hoursPerDay:5, startTime:'10:00', endTime:'14:45'},
+      CS5: {name:'Seans 5 - həftə sonu', days:[6,0], hoursPerDay:5, startTime:'15:30', endTime:'20:15'}
+    };
+    function parseTime(timeStr) {const [h, m] = timeStr.split(':').map(Number); return h * 60 + m;}
+    
+    async function saveState(){ 
+        try {
+            if (state.groups.length > 0 || state.teachers.length > 0 || state.nonWorkingHolidays.length > 0 || state.customHolidays.length > 0 || state.archivedGroups.length > 0) {
+                 await db.collection('scheduler_data').doc(GLOBAL_DOC_ID).set(state);
+            }
+        } catch (e) {
+            console.error("Error writing document: ", e);
+            alert("Xəta: Məlumatlar Firebase-ə yazıla bilmədi.");
+        }
+    }
+
+    // AUTH MANAGEMENT
+    const loginScreen = document.getElementById('loginScreen');
+    const mainApp = document.getElementById('mainApp');
+    const loginBtn = document.getElementById('loginBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const loginEmail = document.getElementById('loginEmail');
+    const loginPassword = document.getElementById('loginPassword');
+    const loginError = document.getElementById('loginError');
+    const userInfo = document.getElementById('userInfo');
+
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        loginScreen.classList.add('hidden');
+        mainApp.classList.remove('hidden');
+        userInfo.textContent = `👤 ${user.email}`;
+        startFirebaseListener();
+      } else {
+        loginScreen.classList.remove('hidden');
+        mainApp.classList.add('hidden');
+      }
+    });
+
+    loginBtn.onclick = async () => {
+      const email = loginEmail.value.trim();
+      const password = loginPassword.value.trim();
+      
+      if(!email || !password) {
+        loginError.textContent = 'Email və şifrə daxil edin!';
+        loginError.style.display = 'block';
+        return;
+      }
+
+      try {
+        await auth.signInWithEmailAndPassword(email, password);
+        loginError.style.display = 'none';
+      } catch (error) {
+        loginError.textContent = 'Giriş uğursuz oldu: ' + error.message;
+        loginError.style.display = 'block';
+      }
+    };
+
+    logoutBtn.onclick = () => auth.signOut();
+    loginPassword.onkeypress = (e) => { if(e.key === 'Enter') loginBtn.click(); };
+    
+    const addGroupBtn = document.getElementById('addGroupBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const groupNameInput = document.getElementById('groupName');
+    const groupCodeInput = document.getElementById('groupCode');
+    const startDateInput = document.getElementById('startDate');
+    const groupsList = document.getElementById('groupsList');
+    const archivedGroupsList = document.getElementById('archivedGroupsList');
+    const groupDetails = document.getElementById('groupDetails');
+    const addTeacherBtn = document.getElementById('addTeacherBtn');
+    const teacherNameInput = document.getElementById('teacherName');
+    const teacherRoleInput = document.getElementById('teacherRole');
+    const teacherListDiv = document.getElementById('teacherList');
+    const holidaysListDiv = document.getElementById('holidaysList');
+    const selectAllHolidaysBtn = document.getElementById('selectAllHolidaysBtn');
+    const saveHolidaysBtn = document.getElementById('saveHolidaysBtn');
+    const addCustomHolidayBtn = document.getElementById('addCustomHolidayBtn');
+    const manageHolidaysBtn = document.getElementById('manageHolidaysBtn');
+    const openDashboardBtn = document.getElementById('openDashboardBtn');
+    const openGroupsTableBtn = document.getElementById('openGroupsTableBtn');
+    const openGradingBtn = document.getElementById('openGradingBtn');
+    const modulesInputs = document.getElementById('modulesInputs');
+
+    // Tab switching
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.onclick = () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById(btn.dataset.tab === 'active' ? 'activeGroupsTab' : 'archiveTab').classList.add('active');
+      };
+    });
+
+    function updateModuleHours(groupCode) {
+        let defaultHours;
+        if (['CS1', 'CS2'].includes(groupCode)) defaultHours = DEFAULT_MODULE_HOURS['CS1/CS2'];
+        else if (groupCode === 'CS3') defaultHours = DEFAULT_MODULE_HOURS['CS3'];
+        else if (['CS4', 'CS5'].includes(groupCode)) defaultHours = DEFAULT_MODULE_HOURS['CS4/CS5'];
+        else defaultHours = MODULES.reduce((acc, m) => { acc[m] = 40; return acc; }, {});
+
+        modulesInputs.innerHTML = '';
+        MODULES.forEach(m => {
+            const defaultVal = defaultHours[m] || 40;
+            const div = document.createElement('div'); div.className='module-row';
+            div.innerHTML = `<div style="flex:1"><label>${m}</label></div><input type="number" min="1" value="${defaultVal}" data-module="${m}" style="width:110px" />`;
+            modulesInputs.appendChild(div);
+        });
+    }
+
+    groupCodeInput.onchange = (e) => updateModuleHours(e.target.value);
+    
+    function getRoleBadge(role) {
+      if (role === 'teacher') return '<span class="badge badge-teacher">Müəllim</span>';
+      if (role === 'ta') return '<span class="badge badge-ta">TA</span>';
+      if (role === 'both') return '<span class="badge badge-both">Müəllim/TA</span>';
+      return '<span class="badge badge-teacher">Müəllim</span>';
+    }
+
+    function renderTeachers(){
+      teacherListDiv.innerHTML = '';
+      state.teachers.forEach((t, idx)=>{
+        const div = document.createElement('div');
+        div.className = 'teacher-item';
+        div.innerHTML = `
+          <div onclick="openTeacherProfile(${idx})" style="flex:1;cursor:pointer;">
+            <strong>${t.name}</strong> ${getRoleBadge(t.role || 'teacher')}
+            ${t.note ? '<div class="small muted">'+t.note+'</div>' : ''}
+          </div>
+          <div class="teacher-item-actions">
+            <button class="btn secondary" onclick="openTeacherProfile(${idx})">Profil</button>
+            <button class="btn secondary" onclick="editTeacher(${idx})">Düzəlt</button>
+            <button class="btn danger" onclick="deleteTeacher(${idx})">Sil</button>
+          </div>
+        `;
+        teacherListDiv.appendChild(div);
+      });
+    }
+
+    function deleteTeacher(idx) {
+      if (!confirm('Bu müəllimi silmək istədiyinizdən əminsiniz?')) return;
+      
+      const teacherName = state.teachers[idx].name;
+      let hasAssignments = false;
+      
+      state.groups.forEach(g => {
+        if (g.assignments) {
+          Object.values(g.assignments).forEach(assigned => {
+            if (assigned === teacherName) hasAssignments = true;
+          });
+        }
+        if (g.taAssignments) {
+          Object.values(g.taAssignments).forEach(assigned => {
+            if (assigned === teacherName) hasAssignments = true;
+          });
+        }
+      });
+
+      if (hasAssignments) {
+        if (!confirm('Bu müəllim qruplarda təyin olunub. Yenə də silmək istəyirsiniz? (Təyinatlar silinəcək)')) return;
+        
+        state.groups.forEach(g => {
+          if (g.assignments) {
+            Object.keys(g.assignments).forEach(mod => {
+              if (g.assignments[mod] === teacherName) delete g.assignments[mod];
+            });
+          }
+          if (g.taAssignments) {
+            Object.keys(g.taAssignments).forEach(mod => {
+              if (g.taAssignments[mod] === teacherName) delete g.taAssignments[mod];
+            });
+          }
+        });
+      }
+
+      state.teachers.splice(idx, 1);
+      saveState();
+    }
+
+    function editTeacher(idx) {
+      const teacher = state.teachers[idx];
+      const newName = prompt('Yeni ad daxil edin:', teacher.name);
+      if (!newName || newName.trim() === '') return;
+      
+      const trimmedName = newName.trim();
+      if (state.teachers.some((t, i) => t.name === trimmedName && i !== idx)) {
+        alert('Bu adda müəllim artıq mövcuddur!');
+        return;
+      }
+
+      const oldName = teacher.name;
+      teacher.name = trimmedName;
+
+      state.groups.forEach(g => {
+        if (g.assignments) {
+          Object.keys(g.assignments).forEach(mod => {
+            if (g.assignments[mod] === oldName) g.assignments[mod] = trimmedName;
+          });
+        }
+        if (g.taAssignments) {
+          Object.keys(g.taAssignments).forEach(mod => {
+            if (g.taAssignments[mod] === oldName) g.taAssignments[mod] = trimmedName;
+          });
+        }
+      });
+
+      saveState();
+    }
+
+    function openTeacherProfile(idx) {
+      const teacher = state.teachers[idx];
+      const modal = document.getElementById('teacherProfileModal');
+      const content = document.getElementById('teacherProfileContent');
+      
+      content.innerHTML = `
+        <div style="text-align:center;">
+          ${teacher.photoURL ? 
+            `<img src="${teacher.photoURL}" class="profile-img-preview" alt="Profil şəkli" />` : 
+            `<div class="profile-img-placeholder">👤</div>`
+          }
+          <input type="file" id="profilePhotoInput" accept="image/*" style="margin:10px auto;display:block;width:200px;" />
+        </div>
+        
+        <label>Ad Soyad</label>
+        <input id="profileName" value="${teacher.name}" />
+        
+        <label>Rol</label>
+        <select id="profileRole">
+          <option value="teacher" ${(teacher.role || 'teacher') === 'teacher' ? 'selected' : ''}>Müəllim</option>
+          <option value="ta" ${teacher.role === 'ta' ? 'selected' : ''}>TA</option>
+          <option value="both" ${teacher.role === 'both' ? 'selected' : ''}>Müəllim/TA</option>
+        </select>
+        
+        <label>Email</label>
+        <input id="profileEmail" type="email" value="${teacher.email || ''}" placeholder="email@example.com" />
+        
+        <label>Telefon</label>
+        <input id="profilePhone" value="${teacher.phone || ''}" placeholder="+994..." />
+        
+        <label>Haqqında</label>
+        <textarea id="profileBio" rows="3" placeholder="Qısa məlumat...">${teacher.bio || ''}</textarea>
+        
+        <label>Qeyd</label>
+        <input id="profileNote" value="${teacher.note || ''}" placeholder="Daxili qeyd" />
+        
+        <div style="margin-top:20px;display:flex;gap:8px;">
+          <button class="btn" onclick="saveTeacherProfile(${idx})">Yadda saxla</button>
+          <button class="btn secondary" onclick="closeTeacherProfile()">Bağla</button>
+        </div>
+      `;
+      
+      modal.classList.add('active');
+    }
+
+    function closeTeacherProfile() {
+      document.getElementById('teacherProfileModal').classList.remove('active');
+    }
+
+    async function saveTeacherProfile(idx) {
+      const teacher = state.teachers[idx];
+      const fileInput = document.getElementById('profilePhotoInput');
+      
+      teacher.name = document.getElementById('profileName').value.trim();
+      teacher.role = document.getElementById('profileRole').value;
+      teacher.email = document.getElementById('profileEmail').value.trim();
+      teacher.phone = document.getElementById('profilePhone').value.trim();
+      teacher.bio = document.getElementById('profileBio').value.trim();
+      teacher.note = document.getElementById('profileNote').value.trim();
+
+      if (fileInput.files && fileInput.files[0]) {
+        const file = fileInput.files[0];
+        const storageRef = storage.ref(`teacher_photos/${Date.now()}_${file.name}`);
+        
+        try {
+          const snapshot = await storageRef.put(file);
+          teacher.photoURL = await snapshot.ref.getDownloadURL();
+        } catch (error) {
+          console.error('Şəkil yüklənmədi:', error);
+          alert('Şəkil yükləmə xətası: ' + error.message);
+        }
+      }
+
+      await saveState();
+      closeTeacherProfile();
+      alert('Profil yeniləndi!');
+    }
+    
+    function getAllHolidays() {
+      const base = [...HOLIDAYS_RAW];
+      const custom = (state.customHolidays || []).map(h => ({date: h.date, name: h.name + ' (Xüsusi)'}));
+      return [...base, ...custom];
+    }
+
+    function renderHolidays(){
+        holidaysListDiv.innerHTML = '';
+        const allHolidays = getAllHolidays();
+        allHolidays.forEach(h => {
+            const isChecked = state.nonWorkingHolidays && state.nonWorkingHolidays.includes(h.date);
+            const div = document.createElement('div');
+            div.className = 'holiday-item';
+            div.innerHTML = `<input type="checkbox" data-holiday-date="${h.date}" ${isChecked ? 'checked' : ''} /><span class="muted">${h.date}</span> - <strong>${h.name}</strong>`;
+            holidaysListDiv.appendChild(div);
+        });
+    }
+    
+    function selectAllHolidaysHandler(){
+        state.nonWorkingHolidays = getAllHolidays().map(h => h.date);
+        saveState();
+        renderHolidays(); 
+        alert('Bütün bayramlar seçildi və saxlanıldı.');
+    }
+
+    function saveHolidayDecisions(){
+        state.nonWorkingHolidays = [];
+        document.querySelectorAll('#holidaysList input[type="checkbox"]:checked').forEach(input => {
+            state.nonWorkingHolidays.push(input.dataset.holidayDate);
+        });
+        saveState();
+        alert('Bayram qərarları saxlanıldı və Firebase-ə yazıldı.');
+    }
+    
+    selectAllHolidaysBtn.onclick = selectAllHolidaysHandler;
+    saveHolidaysBtn.onclick = saveHolidayDecisions;
+    addCustomHolidayBtn.onclick = () => document.getElementById('customHolidayModal').classList.add('active');
+    manageHolidaysBtn.onclick = openManageHolidays;
+
+    function closeCustomHolidayModal() {
+      document.getElementById('customHolidayModal').classList.remove('active');
+      document.getElementById('customHolidayDate').value = '';
+      document.getElementById('customHolidayName').value = '';
+    }
+
+    function saveCustomHoliday() {
+      const date = document.getElementById('customHolidayDate').value.trim();
+      const name = document.getElementById('customHolidayName').value.trim();
+      
+      if (!date || !name) {
+        alert('Tarix və ad daxil edin!');
+        return;
+      }
+      
+      if (!/^\d{2}\/\d{2}\/\d{4}$/.test(date)) {
+        alert('Tarix formatı dd/mm/yyyy olmalıdır');
+        return;
+      }
+
+      state.customHolidays = state.customHolidays || [];
+      if (state.customHolidays.some(h => h.date === date)) {
+        alert('Bu tarix artıq əlavə edilib!');
+        return;
+      }
+
+      state.customHolidays.push({date, name});
+      saveState();
+      renderHolidays();
+      closeCustomHolidayModal();
+      alert('Bayram əlavə edildi!');
+    }
+
+    function openManageHolidays() {
+      const modal = document.getElementById('manageHolidaysModal');
+      const content = document.getElementById('manageHolidaysContent');
+      
+      if (!state.customHolidays || state.customHolidays.length === 0) {
+        content.innerHTML = '<p class="muted">Xüsusi bayram əlavə edilməyib.</p>';
+      } else {
+        let html = '<table><thead><tr><th>Tarix</th><th>Ad</th><th>Əməliyyat</th></tr></thead><tbody>';
+        state.customHolidays.forEach((h, idx) => {
+          html += `<tr><td>${h.date}</td><td>${h.name}</td><td><button class="btn danger" style="width:auto;padding:4px 8px;" onclick="deleteCustomHoliday(${idx})">Sil</button></td></tr>`;
+        });
+        html += '</tbody></table>';
+        content.innerHTML = html;
+      }
+      
+      modal.classList.add('active');
+    }
+
+    function closeManageHolidaysModal() {
+      document.getElementById('manageHolidaysModal').classList.remove('active');
+    }
+
+    function deleteCustomHoliday(idx) {
+      if (!confirm('Bu bayramı silmək istədiyinizdən əminsiniz?')) return;
+      state.customHolidays.splice(idx, 1);
+      saveState();
+      renderHolidays();
+      openManageHolidays();
+    }
+
+    function renderGroups(){
+      groupsList.innerHTML='';
+      archivedGroupsList.innerHTML='';
+      
+      const activeGroups = state.groups.filter(g => !g.archived);
+      const archived = state.groups.filter(g => g.archived);
+
+      activeGroups.forEach((g,idx)=>{
+        const realIdx = state.groups.indexOf(g);
+        const el = document.createElement('div');
+        el.style.padding='8px'; el.style.borderBottom='1px dashed #eef2f7';
+        el.innerHTML = `<strong>${g.name}</strong> <div class="small muted">${SESSIONS[g.code].startTime}-${SESSIONS[g.code].endTime} (${g.code}) – Baş: ${g.startDate}</div><div style="margin-top:6px"><button data-idx="${realIdx}" class="btn normal-open-btn">Normal Aç</button> <button data-idx="${realIdx}" class="btn secondary popup-open-btn">Pəncərə Kimi Aç</button><button data-archive="${realIdx}" class="btn secondary">Arxivlə</button><button data-del="${realIdx}" class="btn danger">Sil</button></div>`;
+        groupsList.appendChild(el);
+      });
+
+      if (archived.length === 0) {
+        archivedGroupsList.innerHTML = '<p class="muted small">Arxivlənmiş qrup yoxdur.</p>';
+      } else {
+        archived.forEach((g)=>{
+          const realIdx = state.groups.indexOf(g);
+          const el = document.createElement('div');
+          el.className = 'archived-group';
+          el.style.padding='8px'; el.style.borderBottom='1px dashed #eef2f7';
+          el.innerHTML = `<strong>${g.name}</strong> <span class="badge" style="background:#94a3b8;color:white;">Arxiv</span><div class="small muted">${SESSIONS[g.code].startTime}-${SESSIONS[g.code].endTime} (${g.code}) – Baş: ${g.startDate}</div><div style="margin-top:6px"><button data-idx="${realIdx}" class="btn secondary normal-open-btn">Bax</button><button data-restore="${realIdx}" class="btn success">Geri qaytır</button><button data-del="${realIdx}" class="btn danger">Sil</button></div>`;
+          archivedGroupsList.appendChild(el);
+        });
+      }
+    }
+
+<!-- HİSSƏ 2/3 SONU -->
+
+function computeScheduleForGroup(group){
+        const session = SESSIONS[group.code];
+        const dailyHours = session.hoursPerDay;
+        const allowedWeekdays = session.days; 
+        const result = [];
+        let curDate = parseDateDMY(group.startDate);
+        
+        function advanceToAllowed(date){
+            let d = new Date(date);
+            while(true){
+                const wd = d.getDay(); 
+                if(allowedWeekdays.includes(wd) && !isHoliday(d)) return d; 
+                d.setDate(d.getDate()+1);
+            }
+        }
+        curDate = advanceToAllowed(curDate);
+
+        for(const module of MODULES){
+            const hours = Number(group.moduleHours[module]||40);
+            const daysNeeded = Math.ceil(hours / dailyHours);
+            const start = new Date(curDate);
+            let usedDays=0;
+            let lastDay = new Date(start);
+            while(usedDays < daysNeeded){
+                const wd = curDate.getDay();
+                if(allowedWeekdays.includes(wd) && !isHoliday(curDate)){
+                    lastDay = new Date(curDate);
+                    usedDays++;
+                }
+                curDate.setDate(curDate.getDate()+1);
+            }
+            curDate = advanceToAllowed(curDate);
+            result.push({
+              module, 
+              start:formatDateDMY(start), 
+              end:formatDateDMY(lastDay), 
+              hours, 
+              daysUsed:daysNeeded, 
+              teacher: (group.assignments && group.assignments[module])||null,
+              ta: (group.taAssignments && group.taAssignments[module])||null,
+              sessionTime: `${session.startTime}-${session.endTime}`, 
+              groupName: group.name, 
+              groupCode: group.code
+            });
+        }
+        return result;
+    }
+    
+    function renderGroupDetails(idx, targetElement){
+      const g = state.groups[idx];
+      if(!g) { targetElement.textContent='Seçim edilməyib'; return; }
+      const schedule = computeScheduleForGroup(g);
+      
+      let html = `<h3>${g.name} Təfərrüatları</h3><div style="margin-bottom:15px"><strong>${g.name}</strong> – ${SESSIONS[g.code].startTime}-${SESSIONS[g.code].endTime} (${g.code}) – Başlanğıc: ${g.startDate}</div>`;
+      
+      html += `<h4>Modul Cədvəli və Müəllim Təyinatı</h4><table><thead><tr><th>Modul</th><th>Başlama</th><th>Bitiş</th><th>Saat Aralığı</th><th>Saat</th><th>Günlər</th><th>Müəllim</th><th>TA</th></tr></thead><tbody>`;
+      
+      schedule.forEach(s=>{
+        const teachers = state.teachers.filter(t => !t.role || t.role === 'teacher' || t.role === 'both');
+        const tas = state.teachers.filter(t => t.role === 'ta' || t.role === 'both');
+
+        let teacherSelectHtml = '<select data-mod="'+s.module+'" data-type="teacher">';
+        teacherSelectHtml += '<option value="">-- müəllim seç --</option>';
+        teachers.forEach(t => {
+            const isAvailable = isTeacherAvailable(t.name, s).available;
+            const isWithinLimit = checkDailyAssignmentLimit(t.name, s).withinLimit;
+            let className = '';
+            if (!isAvailable) { className = 'teacher-select-busy'; } 
+            else if (!isWithinLimit) { className = 'teacher-select-tired'; }
+            teacherSelectHtml += `<option value="${t.name}" class="${className}" ${s.teacher === t.name ? 'selected' : ''}>${t.name}</option>`;
+        });
+        teacherSelectHtml += '</select>';
+
+        let taSelectHtml = '<select data-mod="'+s.module+'" data-type="ta">';
+        taSelectHtml += '<option value="">-- TA seç --</option>';
+        tas.forEach(t => {
+            const isAvailable = isTeacherAvailable(t.name, s).available;
+            const isWithinLimit = checkDailyAssignmentLimit(t.name, s).withinLimit;
+            let className = '';
+            if (!isAvailable) { className = 'teacher-select-busy'; } 
+            else if (!isWithinLimit) { className = 'teacher-select-tired'; }
+            taSelectHtml += `<option value="${t.name}" class="${className}" ${s.ta === t.name ? 'selected' : ''}>${t.name}</option>`;
+        });
+        taSelectHtml += '</select>';
+
+        const teacherCell = s.teacher ? 
+          `${s.teacher} <button class="btn secondary" style="padding:4px 8px;font-size:11px;" data-change-teacher="${s.module}" data-group-idx="${idx}">Dəyiş</button>` : 
+          teacherSelectHtml + '<button class="assignBtn" data-mod="'+s.module+'" data-group-idx="'+idx+'" data-type="teacher">Təyin et</button>';
+
+        const taCell = s.ta ? 
+          `${s.ta} <button class="btn secondary" style="padding:4px 8px;font-size:11px;" data-change-ta="${s.module}" data-group-idx="${idx}">Dəyiş</button>` : 
+          taSelectHtml + '<button class="assignBtn" data-mod="'+s.module+'" data-group-idx="'+idx+'" data-type="ta">Təyin et</button>';
+
+        html += `<tr><td>${s.module}</td><td>${s.start}</td><td>${s.end}</td><td>${s.sessionTime}</td><td>${s.hours}</td><td>${s.daysUsed}</td><td class="assignment-cell">${teacherCell}</td><td class="assignment-cell">${taCell}</td></tr>`;
+      });
+      html += `</tbody></table>`;
+      
+      html += `<div style="margin-top: 15px;"><button class="btn bulkAssignBtn" data-group-idx="${idx}">Bütün Seçilmiş Modulları Təyin et</button></div>`;
+
+      // Həftəlik Qeydlər Bölməsi
+      const progStart = parseDateDMY(g.startDate);
+      const progEnd = parseDateDMY(schedule[schedule.length-1].end);
+      const notes = g.weeklyNotes || {};
+      
+      html += `<h4 style="margin-top:20px;border-top:2px solid #e6edf3;padding-top:15px;">Həftəlik Qeydlər (Çərşənbə axşamı günləri)</h4>`;
+      html += `<p class="small muted">Proqram müddəti: ${g.startDate} - ${formatDateDMY(progEnd)}</p>`;
+      
+      // Bütün Çərşənbə axşamı günlərini tap
+      const rows = [];
+      let cur = new Date(progStart);
+      
+      // İlk Çərşənbə axşamını tap
+      while(cur.getDay() !== 2) {
+        cur.setDate(cur.getDate() + 1);
+      }
+      
+      // Bütün Çərşənbə axşamlarını topla
+      while(cur <= progEnd){
+        if(cur >= progStart) {
+          const key = formatDateDMY(cur);
+          const entry = notes[key] || {status:'yellow', text:''}; 
+          rows.push({date: key, entry: entry});
+        }
+        cur.setDate(cur.getDate() + 7); // Növbəti həftəyə keç
+      }
+      
+      if(rows.length === 0) {
+        html += '<div class="muted" style="padding:10px;background:#f9fafb;border-radius:6px;">Proqram müddətində heç bir Çərşənbə axşamı günü yoxdur.</div>';
+      } else {
+        html += '<div style="background:#fcfdff;padding:12px;border-radius:6px;border:1px solid #e6edf3;">';
+        html += `<p class="small" style="margin-bottom:10px;"><strong>${rows.length}</strong> həftəlik qeyd nöqtəsi tapıldı:</p>`;
+        
+        rows.forEach((r, idx) => {
+          html += `<div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;padding:8px;background:#fff;border-radius:4px;border:1px solid #f0f5f9;">
+                    <div style="width:30px;text-align:center;font-weight:600;color:var(--muted);">${idx + 1}</div>
+                    <div style="width:100px;flex-shrink:0;font-size:13px;">${r.date}</div>
+                    <select data-note="${r.date}" class="select-status-${r.entry.status}" style="width:140px;flex-shrink:0;">
+                      <option value="green" ${r.entry.status==='green'?'selected':''}>✓ Həll olundu</option>
+                      <option value="yellow" ${r.entry.status==='yellow'?'selected':''}>⏳ Gələn həftə</option>
+                      <option value="orange" ${r.entry.status==='orange'?'selected':''}>⚠️ Bu həftə HƏLL</option>
+                    </select>
+                    <input data-note-text="${r.date}" placeholder="Qeyd və ya problemin təsviri..." value="${r.entry.text||''}" style="flex:1;min-width:200px;"/>
+                  </div>`;
+        });
+        
+        html += `<div style="margin-top:12px;text-align:right;">
+                  <button class="btn saveNotesBtn">💾 Bütün Qeydləri Saxla</button>
+                </div>`;
+        html += '</div>';
+      }
+
+      targetElement.innerHTML = html;
+      attachGroupDetailsListeners(idx, targetElement);
+      
+      targetElement.querySelectorAll('[data-note]').forEach(sel=>{
+        const updateStatusColor = ()=>{ sel.className = 'select-status-' + sel.value; }
+        sel.onchange = updateStatusColor;
+        updateStatusColor(); 
+      });
+
+      return html; 
+    }
+
+    function attachGroupDetailsListeners(idx, container) {
+        container.querySelectorAll('.assignBtn').forEach(b=>{
+            b.removeEventListener('click', handleSingleAssignment); 
+            b.addEventListener('click', handleSingleAssignment);
+        });
+        
+        container.querySelectorAll('[data-change-teacher]').forEach(b=>{
+            b.addEventListener('click', (e) => {
+                const mod = e.currentTarget.dataset.changeTeacher;
+                const groupIdx = Number(e.currentTarget.dataset.groupIdx);
+                changeAssignment(groupIdx, mod, 'teacher', container);
+            });
+        });
+
+        container.querySelectorAll('[data-change-ta]').forEach(b=>{
+            b.addEventListener('click', (e) => {
+                const mod = e.currentTarget.dataset.changeTa;
+                const groupIdx = Number(e.currentTarget.dataset.groupIdx);
+                changeAssignment(groupIdx, mod, 'ta', container);
+            });
+        });
+
+        const bulkAssignBtn = container.querySelector('.bulkAssignBtn');
+        if (bulkAssignBtn) {
+            bulkAssignBtn.removeEventListener('click', handleBulkAssignment);
+            bulkAssignBtn.addEventListener('click', handleBulkAssignment);
+        }
+        const saveNotesBtn = container.querySelector('.saveNotesBtn');
+        if(saveNotesBtn){
+            saveNotesBtn.removeEventListener('click', () => saveNotesHandler(idx, container));
+            saveNotesBtn.addEventListener('click', () => saveNotesHandler(idx, container));
+        }
+    }
+
+    function changeAssignment(groupIndex, moduleName, type, container) {
+        const g = state.groups[groupIndex];
+        const assignmentKey = type === 'teacher' ? 'assignments' : 'taAssignments';
+        
+        if (g[assignmentKey] && g[assignmentKey][moduleName]) {
+            delete g[assignmentKey][moduleName];
+        }
+        
+        saveState();
+        
+        const isPopup = container.ownerDocument !== document;
+        if (isPopup) {
+            container.ownerDocument.defaultView.renderContent();
+        } else {
+            renderGroupDetails(groupIndex, container);
+        }
+    }
+    
+    function saveNotesHandler(idx, container) {
+        const g = state.groups[idx];
+        g.weeklyNotes = g.weeklyNotes || {};
+        
+        let shouldReRenderPopup = (container.closest('body') !== document.body); 
+
+        container.querySelectorAll('[data-note]').forEach(sel=>{
+            const date = sel.dataset.note;
+            const status = sel.value;
+            const text = container.querySelector(`[data-note-text="${date}"]`).value;
+            g.weeklyNotes[date] = {status: status, text};
+        });
+        saveState(); 
+        alert('Qeydlər saxlanıldı'); 
+        
+        if (shouldReRenderPopup) {
+            const win = container.ownerDocument.defaultView;
+            if (win && win.renderContent) win.renderContent();
+        } else {
+            renderGroupDetails(idx, groupDetails); 
+        }
+    }
+
+    function assignModule(groupIndex, moduleName, teacherName, type = 'teacher') {
+        const g = state.groups[groupIndex];
+        const modSched = computeScheduleForGroup(g).find(x=>x.module===moduleName);
+        
+        const availabilityCheck = isTeacherAvailable(teacherName, modSched);
+        if(!availabilityCheck.available) {
+            return { success: false, message: availabilityCheck.message };
+        }
+        
+        const dailyLimitCheck = checkDailyAssignmentLimit(teacherName, modSched);
+        if(!dailyLimitCheck.withinLimit) {
+            return { success: false, message: dailyLimitCheck.message };
+        }
+        
+        if (type === 'teacher') {
+            g.assignments = g.assignments || {};
+            g.assignments[moduleName] = teacherName;
+        } else {
+            g.taAssignments = g.taAssignments || {};
+            g.taAssignments[moduleName] = teacherName;
+        }
+        
+        return { success: true };
+    }
+
+    function handleSingleAssignment(e) {
+        const btn = e.currentTarget;
+        const mod = btn.dataset.mod;
+        const groupIndex = Number(btn.dataset.groupIdx);
+        const type = btn.dataset.type || 'teacher';
+        
+        const sel = btn.parentElement.querySelector(`select[data-mod="${mod}"][data-type="${type}"]`);
+        const teacher = sel.value;
+        
+        if(!teacher){ alert('Müəllim seçin'); return; }
+
+        const result = assignModule(groupIndex, mod, teacher, type);
+
+        if (result.success) {
+            saveState(); 
+            alert(`Təyinat uğurlu oldu: ${teacher} -> ${mod} (${type === 'teacher' ? 'Müəllim' : 'TA'})`);
+            
+            const isPopup = e.view && e.view.name === "GroupDetailsPopup";
+            if (isPopup) {
+                e.view.renderContent(); 
+            } else {
+                renderGroupDetails(groupIndex, groupDetails); 
+            }
+        } else {
+            alert(result.message);
+        }
+    }
+    
+    function handleBulkAssignment(e) {
+        const groupIndex = Number(e.currentTarget.dataset.groupIdx);
+        const g = state.groups[groupIndex];
+        const modulesToAssign = [];
+        let firstConflict = null;
+
+        const container = e.currentTarget.closest('.group-details-container') || e.currentTarget.closest('body'); 
+        
+        container.querySelectorAll('select[data-mod]').forEach(sel => {
+            const mod = sel.dataset.mod;
+            const teacher = sel.value;
+            const type = sel.dataset.type || 'teacher';
+            const assignmentKey = type === 'teacher' ? 'assignments' : 'taAssignments';
+            
+            if (teacher && (!g[assignmentKey] || g[assignmentKey][mod] !== teacher)) { 
+                modulesToAssign.push({ module: mod, teacher: teacher, type: type });
+            }
+        });
+        
+        if (modulesToAssign.length === 0) {
+            alert('Təyin ediləcək seçilmiş modul tapılmadı. Müəllimi seçin və modulun təyin olunmadığından əmin olun.');
+            return;
+        }
+
+        for (const item of modulesToAssign) {
+            const modSched = computeScheduleForGroup(g).find(x => x.module === item.module);
+            
+            const availabilityCheck = isTeacherAvailable(item.teacher, modSched);
+            if (!availabilityCheck.available) {
+                firstConflict = { module: item.module, message: availabilityCheck.message };
+                break;
+            }
+            
+            const dailyLimitCheck = checkDailyAssignmentLimit(item.teacher, modSched);
+            if (!dailyLimitCheck.withinLimit) {
+                firstConflict = { module: item.module, message: dailyLimitCheck.message };
+                break;
+            }
+        }
+
+        if (firstConflict) {
+            alert(`Kütləvi təyinat mümkün olmadı. ${firstConflict.module} modulunda toqquşma/limit aşımı aşkarlandı: \n\n${firstConflict.message}`);
+            return;
+        }
+        
+        let assignmentsCount = 0;
+        modulesToAssign.forEach(item => {
+            if (item.type === 'teacher') {
+                g.assignments = g.assignments || {};
+                g.assignments[item.module] = item.teacher;
+            } else {
+                g.taAssignments = g.taAssignments || {};
+                g.taAssignments[item.module] = item.teacher;
+            }
+            assignmentsCount++;
+        });
+
+        if (assignmentsCount > 0) {
+            saveState(); 
+            
+            const isPopup = e.view && e.view.name === "GroupDetailsPopup";
+            if (isPopup) {
+                e.view.renderContent();
+            } else {
+                renderGroupDetails(groupIndex, groupDetails);
+            }
+            
+            alert(`${assignmentsCount} modul üçün kütləvi təyinat uğurla yerinə yetirildi!`);
+        }
+    }
+    
+    function checkDailyAssignmentLimit(teacherName, moduleSchedule){
+        const s1 = parseDateDMY(moduleSchedule.start);
+        const e1 = parseDateDMY(moduleSchedule.end);
+        const proposedGroupName = moduleSchedule.groupName; 
+        const teacherDailyLoad = {}; 
+
+        for(const g of state.groups){
+            if (g.archived) continue;
+            const gSchedule = computeScheduleForGroup(g);
+            for(const m of MODULES){
+                let isAssigned = false;
+                if(g.assignments && g.assignments[m] === teacherName) isAssigned = true;
+                if(g.taAssignments && g.taAssignments[m] === teacherName) isAssigned = true;
+                
+                if(isAssigned){
+                    const sched = gSchedule.find(x=>x.module===m);
+                    if(!sched) continue;
+                    
+                    const isCurrentModule = (g.name === proposedGroupName && m === moduleSchedule.module);
+                    if (isCurrentModule) continue; 
+
+                    const sessionTimes = SESSIONS[g.code];
+                    const allowedWeekdays = sessionTimes.days;
+                    
+                    let cur = parseDateDMY(sched.start);
+                    const end = parseDateDMY(sched.end);
+                    while(cur <= end){
+                        const wd = cur.getDay();
+                        if(allowedWeekdays.includes(wd) && !isHoliday(cur)){
+                            const dateStr = formatDateDMY(cur);
+                            teacherDailyLoad[dateStr] = (teacherDailyLoad[dateStr] || 0) + 1;
+                        }
+                        cur.setDate(cur.getDate() + 1);
+                    }
+                }
+            }
+        }
+        
+        let cur = new Date(s1);
+        const conflicts = [];
+        const sessionTimes = SESSIONS[state.groups.find(x=>x.name===proposedGroupName).code];
+        const allowedWeekdays = sessionTimes.days;
+
+        while(cur <= e1){
+            const wd = cur.getDay();
+            if(allowedWeekdays.includes(wd) && !isHoliday(cur)){
+                const dateStr = formatDateDMY(cur);
+                const currentLoad = teacherDailyLoad[dateStr] || 0;
+                
+                if(currentLoad >= 2) { 
+                    let conflictGroups = [];
+                    for (const g of state.groups) {
+                        if (g.archived) continue;
+                        if (!g.assignments && !g.taAssignments) continue;
+                        const gSched = computeScheduleForGroup(g);
+                        for (const m of MODULES) {
+                            let isAssigned = false;
+                            if(g.assignments && g.assignments[m] === teacherName) isAssigned = true;
+                            if(g.taAssignments && g.taAssignments[m] === teacherName) isAssigned = true;
+                            
+                            if (isAssigned) {
+                                const sched = gSched.find(x => x.module === m);
+                                if (sched) {
+                                    const sDate = parseDateDMY(sched.start);
+                                    const eDate = parseDateDMY(sched.end);
+                                    if (cur >= sDate && cur <= eDate) {
+                                        conflictGroups.push({name: g.name, times: sched.sessionTime});
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    const conflictInfo = conflictGroups.map(cg => `${cg.name} (${cg.times})`).join(', ');
+                    conflicts.push({date: dateStr, details: conflictInfo});
+                }
+            }
+            cur.setDate(cur.getDate() + 1);
+        }
+        
+        if(conflicts.length > 0){
+            const sampleConflict = conflicts[0];
+            const conflictMessage = `Müəllim **${teacherName}** bu təyinatla bəzi günlərdə 2-dən artıq dərsə təyin olunacaq (**Müəllim yoruldu**).\n\nToqquşma detalları (Nümunə ${sampleConflict.date} tarixində):\n\n${teacherName} artıq bu qruplarda məşğuldur:\n${sampleConflict.details}\n\nTəklif olunan modulun saatı: ${moduleSchedule.sessionTime}`;
+            return { withinLimit: false, message: conflictMessage };
+        }
+        
+        return { withinLimit: true };
+    }
+
+    function isTeacherAvailable(teacherName, moduleSchedule){
+        const s1 = parseDateDMY(moduleSchedule.start);
+        const e1 = parseDateDMY(moduleSchedule.end);
+        const [t1StartStr, t1EndStr] = moduleSchedule.sessionTime.split('-');
+        const t1Start = parseTime(t1StartStr);
+        const t1End = parseTime(t1EndStr);
+        const proposedGroupName = moduleSchedule.groupName;
+        
+        const proposedGroup = state.groups.find(x=>x.name===proposedGroupName);
+        const g1Session = SESSIONS[proposedGroup ? proposedGroup.code : 'CS1']; 
+        
+        const conflicts = [];
+
+        for(const g of state.groups){
+            if (g.archived) continue;
+            if(!g.assignments && !g.taAssignments) continue;
+            const g2Session = SESSIONS[g.code];
+            
+            for(const m of MODULES){
+                let isAssigned = false;
+                if(g.assignments && g.assignments[m] === teacherName) isAssigned = true;
+                if(g.taAssignments && g.taAssignments[m] === teacherName) isAssigned = true;
+                
+                if(isAssigned){
+                    const sched = computeScheduleForGroup(g).find(x=>x.module===m);
+                    if(!sched) continue;
+                    
+                    if (g.name === proposedGroupName && m === moduleSchedule.module) continue; 
+
+                    const s2 = parseDateDMY(sched.start);
+                    const e2 = parseDateDMY(sched.end);
+                    const [t2StartStr, t2EndStr] = sched.sessionTime.split('-');
+                    const t2Start = parseTime(t2StartStr);
+                    const t2End = parseTime(t2EndStr);
+                    
+                    const dateOverlap = !(e1 < s2 || s1 > e2);
+                    const timeOverlap = !(t1End <= t2Start || t1Start >= t2End);
+                    const weekdayOverlap = g1Session.days.some(day => g2Session.days.includes(day));
+
+                    if(dateOverlap && timeOverlap && weekdayOverlap) {
+                        conflicts.push({groupName: g.name, sessionTimes: `${t2StartStr}-${t2EndStr}`, moduleName: m});
+                    }
+                }
+            }
+        }
+        
+        if(conflicts.length > 0){
+            const conflictDetails = conflicts.map(c => 
+                `- Qrup: ${c.groupName}, Modul: ${c.moduleName}, Saat: ${c.sessionTimes}`
+            ).join('\n');
+            const message = `Bu müəllim həmin vaxt aralığında başqa dərsdə məşğul olacaq (**Qırmızı Xəbərdarlıq**).\n\nToqquşma detalları:\n${conflictDetails}\n\nTəklif edilən Modul Saatı: ${moduleSchedule.sessionTime}`;
+            return { available: false, message: message };
+        }
+        return { available: true };
+    }
+    
+    function generateTeacherDashboardHTML() {
+        if (state.teachers.length === 0) {
+            return '<h3>Müəllimlər Tablosu</h3><p>Sistemdə heç bir müəllim qeydə alınmayıb.</p>';
+        }
+
+        const teacherLoad = {}; 
+        state.groups.forEach(g => {
+            if (g.archived) return;
+            const schedule = computeScheduleForGroup(g);
+            schedule.forEach(s => {
+                if (s.teacher) {
+                    if (!teacherLoad[s.teacher]) teacherLoad[s.teacher] = [];
+                    teacherLoad[s.teacher].push({
+                        groupName: s.groupName, moduleName: s.module, start: s.start, end: s.end,
+                        sessionTime: s.sessionTime, daysUsed: s.daysUsed, daysOfWeek: SESSIONS[s.groupCode].days, 
+                        groupCode: s.groupCode, role: 'Müəllim'
+                    });
+                }
+                if (s.ta) {
+                    if (!teacherLoad[s.ta]) teacherLoad[s.ta] = [];
+                    teacherLoad[s.ta].push({
+                        groupName: s.groupName, moduleName: s.module, start: s.start, end: s.end,
+                        sessionTime: s.sessionTime, daysUsed: s.daysUsed, daysOfWeek: SESSIONS[s.groupCode].days, 
+                        groupCode: s.groupCode, role: 'TA'
+                    });
+                }
+            });
+        });
+        
+        const daysMap = {0:'Bazar', 1:'Bazar ertəsi', 2:'Çərşənbə axşamı', 3:'Çərşənbə', 4:'Cümə axşamı', 5:'Cümə', 6:'Şənbə'};
+        
+        let html = `<h3>Müəllimlər Tablosu</h3><p class="small muted">Hər müəllimin hansı qruplarda, hansı tarixlərdə və hansı saatlarda məşğul olduğu cədvəl.</p><div style="max-height: 70vh; overflow-y: auto;">`;
+
+        for (const teacher of state.teachers) {
+            html += `<h4 style="margin-top: 15px; border-bottom: 1px solid #ddd; padding-bottom: 5px;">${teacher.name} ${getRoleBadge(teacher.role || 'teacher')}</h4>`;
+            
+            const assignments = teacherLoad[teacher.name] || [];
+
+            if (assignments.length === 0) {
+                html += '<p class="muted small">Heç bir qrupa təyin edilməyib.</p>';
+                continue;
+            }
+
+            html += '<table><thead><tr><th>Modul</th><th>Qrup</th><th>Başlanğıc</th><th>Bitiş</th><th>Saat Aralığı</th><th>Həftə Günləri</th><th>Rol</th></tr></thead><tbody>';
+            
+            assignments.forEach(a => {
+                const dayNames = a.daysOfWeek.map(d => daysMap[d]).join(', ');
+                html += `<tr><td>${a.moduleName}</td><td>${a.groupName} (${a.groupCode})</td><td>${a.start}</td><td>${a.end}</td><td>${a.sessionTime}</td><td>${dayNames}</td><td>${a.role}</td></tr>`;
+            });
+
+            html += '</tbody></table>';
+        }
+        
+        html += '</div>';
+        return html;
+    }
+
+    function generateGroupsTableHTML() {
+        if (state.groups.filter(g => !g.archived).length === 0) {
+            return '<h3>Qruplar Tablosu</h3><p>Sistemdə heç bir aktiv qrup yoxdur.</p>';
+        }
+
+        const activeGroups = state.groups.filter(g => !g.archived).sort((a, b) => {
+            return parseDateDMY(a.startDate) - parseDateDMY(b.startDate);
+        });
+
+        let html = `<h3>Qruplar Tablosu</h3><p class="small muted">Bütün qrupların modul təfərrüatları və müəllim təyinatları.</p>`;
+        html += `<button class="btn success" onclick="exportGroupsToExcel()" style="margin-bottom:15px;">Excel-ə Export Et</button>`;
+        html += '<div style="max-height: 70vh; overflow-y: auto;">';
+
+        activeGroups.forEach(g => {
+            const schedule = computeScheduleForGroup(g);
+            html += `<h4 style="margin-top: 20px; border-bottom: 2px solid var(--blue); padding-bottom: 5px;">${g.name} (${g.code})</h4>`;
+            html += `<p class="small"><strong>Başlanğıc:</strong> ${g.startDate} | <strong>Seans:</strong> ${SESSIONS[g.code].startTime}-${SESSIONS[g.code].endTime}</p>`;
+            
+            html += '<table><thead><tr><th>Modul</th><th>Başlama</th><th>Bitiş</th><th>Saat Aralığı</th><th>Saat</th><th>Günlər</th><th>Müəllim</th><th>TA</th></tr></thead><tbody>';
+            
+            schedule.forEach(s => {
+                html += `<tr>
+                    <td>${s.module}</td>
+                    <td>${s.start}</td>
+<td>${s.end}</td>
+<td>${s.sessionTime}</td>
+<td>${s.hours}</td>
+<td>${s.daysUsed}</td>
+<td>${s.teacher || '-'}</td>
+<td>${s.ta || '-'}</td>
+</tr>`;
+});
+
+ html += '</tbody></table>';
+    });
+
+    html += '</div>';
+    return html;
+}
+
+function exportGroupsToExcel() {
+    const activeGroups = state.groups.filter(g => !g.archived).sort((a, b) => {
+        return parseDateDMY(a.startDate) - parseDateDMY(b.startDate);
+    });
+
+    if (activeGroups.length === 0) {
+        alert('Export ediləcək qrup yoxdur.');
+        return;
+    }
+
+    const wb = XLSX.utils.book_new();
+
+    activeGroups.forEach(g => {
+        const schedule = computeScheduleForGroup(g);
+        const wsData = [
+            [`Qrup: ${g.name}`, `Kod: ${g.code}`, `Başlanğıc: ${g.startDate}`, `Seans: ${SESSIONS[g.code].startTime}-${SESSIONS[g.code].endTime}`],
+            [],
+            ['Modul', 'Başlama', 'Bitiş', 'Saat Aralığı', 'Saat', 'Günlər', 'Müəllim', 'TA']
+        ];
+
+        schedule.forEach(s => {
+            wsData.push([
+                s.module,
+                s.start,
+                s.end,
+                s.sessionTime,
+                s.hours,
+                s.daysUsed,
+                s.teacher || '-',
+                s.ta || '-'
+            ]);
+        });
+
+        const ws = XLSX.utils.aoa_to_sheet(wsData);
+        const sheetName = g.name.replace(/[^\w\s]/gi, '').substring(0, 31);
+        XLSX.utils.book_append_sheet(wb, ws, sheetName);
+    });
+
+    XLSX.writeFile(wb, `Qruplar_Cedveli_${formatDateDMY(new Date()).replace(/\//g, '-')}.xlsx`);
+}
+
+openDashboardBtn.onclick = () => {
+    const dashboardHtml = generateTeacherDashboardHTML();
+    const win = window.open("", "_blank", "width=1000,height=700,scrollbars=yes");
+    win.document.write(`<html><head><title>Müəllimlər Tablosu</title><style>${document.querySelector('style').textContent}body { padding: 20px; background: #fff; }table { width: 100%; border-collapse: collapse; margin-top: 10px; }th, td { padding: 10px; border: 1px solid #f3f6f8; text-align: left; font-size: 14px; }th { background: #f9fafb; font-weight: 600; }h3, h4 { font-family: Inter; }</style></head><body>${dashboardHtml}</body></html>`);
+    win.document.close();
+}
+
+openGroupsTableBtn.onclick = () => {
+    const groupsTableHtml = generateGroupsTableHTML();
+    const win = window.open("", "_blank", "width=1200,height=700,scrollbars=yes");
+    win.document.write(`<html><head><title>Qruplar Tablosu</title><style>${document.querySelector('style').textContent}body { padding: 20px; background: #fff; }table { width: 100%; border-collapse: collapse; margin-top: 10px; }th, td { padding: 10px; border: 1px solid #f3f6f8; text-align: left; font-size: 14px; }th { background: #f9fafb; font-weight: 600; }h3, h4 { font-family: Inter; }</style></head><body>${groupsTableHtml}<script>function exportGroupsToExcel(){${exportGroupsToExcel.toString()}};<\/script></body></html>`);
+    win.document.close();
+}
+
+openGradingBtn.onclick = () => {
+    openGradingModal();
+}
+
+function openGradingModal() {
+    const modal = document.getElementById('gradingModal');
+    const content = document.getElementById('gradingContent');
+
+    const activeGroups = state.groups.filter(g => !g.archived);
+
+    if (activeGroups.length === 0) {
+        content.innerHTML = '<p class="muted">Aktiv qrup yoxdur. Əvvəlcə qrup əlavə edin.</p>';
+        modal.classList.add('active');
+        return;
+    }
+
+    let html = '<h4>Qrup Seçin</h4>';
+    html += '<select id="gradingGroupSelect" style="margin-bottom:15px;"><option value="">-- Qrup seçin --</option>';
+    activeGroups.forEach((g, idx) => {
+        const realIdx = state.groups.indexOf(g);
+        html += `<option value="${realIdx}">${g.name}</option>`;
+    });
+    html += '</select>';
+    html += '<div id="gradingGroupContent"></div>';
+
+    content.innerHTML = html;
+    
+    document.getElementById('gradingGroupSelect').onchange = (e) => {
+        const groupIdx = e.target.value;
+        if (groupIdx === '') {
+            document.getElementById('gradingGroupContent').innerHTML = '';
+            return;
+        }
+        renderGradingForGroup(Number(groupIdx));
+    };
+
+    modal.classList.add('active');
+}
+
+function closeGradingModal() {
+    document.getElementById('gradingModal').classList.remove('active');
+}
+
+function renderGradingForGroup(groupIdx) {
+    const g = state.groups[groupIdx];
+    const container = document.getElementById('gradingGroupContent');
+
+    if (!state.grading) state.grading = {};
+    if (!state.grading[g.name]) state.grading[g.name] = { students: [], assessments: [] };
+
+    const groupGrading = state.grading[g.name];
+
+    let html = `<h4>${g.name} - Qiymətləndirmə</h4>`;
+    
+    html += '<div style="margin-top:15px;"><h5>Tələbələr</h5>';
+    html += '<div style="display:flex;gap:8px;margin-bottom:10px;">';
+    html += '<input id="newStudentName" placeholder="Tələbə adı" style="flex:1;" />';
+    html += '<button class="btn" onclick="addStudent(' + groupIdx + ')">Tələbə Əlavə Et</button>';
+    html += '</div>';
+
+    if (groupGrading.students.length === 0) {
+        html += '<p class="muted small">Tələbə əlavə edilməyib.</p>';
+    } else {
+        html += '<table><thead><tr><th>Ad</th><th>Əməliyyat</th></tr></thead><tbody>';
+        groupGrading.students.forEach((student, idx) => {
+            html += `<tr><td>${student}</td><td><button class="btn danger" style="padding:4px 8px;font-size:11px;" onclick="deleteStudent(${groupIdx}, ${idx})">Sil</button></td></tr>`;
+        });
+        html += '</tbody></table>';
+    }
+    html += '</div>';
+
+    html += '<div style="margin-top:20px;"><h5>Qiymətləndirmə Bölmələri</h5>';
+    html += '<div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">';
+    html += '<input id="newAssessmentName" placeholder="Bölmə adı (məs: Quiz 1)" style="flex:1;min-width:150px;" />';
+    html += '<input id="newAssessmentDate" placeholder="Tarix (gün/ay/il)" style="width:120px;" />';
+    html += '<button class="btn" onclick="addAssessment(' + groupIdx + ')">Bölmə Əlavə Et</button>';
+    html += '</div>';
+
+    if (groupGrading.assessments.length === 0) {
+        html += '<p class="muted small">Qiymətləndirmə bölməsi əlavə edilməyib.</p>';
+    } else {
+        html += '<table><thead><tr><th>Ad</th><th>Tarix</th><th>Əməliyyat</th></tr></thead><tbody>';
+        groupGrading.assessments.forEach((assessment, idx) => {
+            html += `<tr><td>${assessment.name}</td><td>${assessment.date || '-'}</td><td><button class="btn danger" style="padding:4px 8px;font-size:11px;" onclick="deleteAssessment(${groupIdx}, ${idx})">Sil</button></td></tr>`;
+        });
+        html += '</tbody></table>';
+    }
+    html += '</div>';
+
+    if (groupGrading.students.length > 0 && groupGrading.assessments.length > 0) {
+        html += '<div style="margin-top:20px;"><h5>Qiymətlər Cədvəli</h5>';
+        html += '<div style="overflow-x:auto;"><table><thead><tr><th>Tələbə</th>';
+        groupGrading.assessments.forEach(a => {
+            html += `<th>${a.name}</th>`;
+        });
+        html += '</tr></thead><tbody>';
+
+        groupGrading.students.forEach((student, sIdx) => {
+            html += `<tr><td><strong>${student}</strong></td>`;
+            groupGrading.assessments.forEach((assessment, aIdx) => {
+                const grade = assessment.grades && assessment.grades[student] ? assessment.grades[student] : '';
+                html += `<td><input type="text" value="${grade}" style="width:80px;padding:4px;" onchange="updateGrade(${groupIdx}, ${aIdx}, '${student}', this.value)" /></td>`;
+            });
+            html += '</tr>';
+        });
+
+        html += '</tbody></table></div>';
+        html += '<button class="btn" style="margin-top:10px;" onclick="saveGrading()">Qiymətləri Saxla</button>';
+        html += '</div>';
+    }
+
+    container.innerHTML = html;
+}
+
+function addStudent(groupIdx) {
+    const input = document.getElementById('newStudentName');
+    const name = input.value.trim();
+    if (!name) {
+        alert('Tələbə adı daxil edin!');
+        return;
+    }
+
+    const g = state.groups[groupIdx];
+    if (!state.grading[g.name]) state.grading[g.name] = { students: [], assessments: [] };
+    
+    if (state.grading[g.name].students.includes(name)) {
+        alert('Bu tələbə artıq əlavə edilib!');
+        return;
+    }
+
+    state.grading[g.name].students.push(name);
+    input.value = '';
+    saveState();
+    renderGradingForGroup(groupIdx);
+}
+
+function deleteStudent(groupIdx, studentIdx) {
+    if (!confirm('Bu tələbəni silmək istədiyinizdən əminsiniz?')) return;
+    const g = state.groups[groupIdx];
+    state.grading[g.name].students.splice(studentIdx, 1);
+    saveState();
+    renderGradingForGroup(groupIdx);
+}
+
+function addAssessment(groupIdx) {
+    const nameInput = document.getElementById('newAssessmentName');
+    const dateInput = document.getElementById('newAssessmentDate');
+    
+    const name = nameInput.value.trim();
+    const date = dateInput.value.trim();
+
+    if (!name) {
+        alert('Bölmə adı daxil edin!');
+        return;
+    }
+
+    const g = state.groups[groupIdx];
+    if (!state.grading[g.name]) state.grading[g.name] = { students: [], assessments: [] };
+
+    state.grading[g.name].assessments.push({ name, date, grades: {} });
+    nameInput.value = '';
+    dateInput.value = '';
+    saveState();
+    renderGradingForGroup(groupIdx);
+}
+
+function deleteAssessment(groupIdx, assessmentIdx) {
+    if (!confirm('Bu qiymətləndirmə bölməsini silmək istədiyinizdən əminsiniz?')) return;
+    const g = state.groups[groupIdx];
+    state.grading[g.name].assessments.splice(assessmentIdx, 1);
+    saveState();
+    renderGradingForGroup(groupIdx);
+}
+
+function updateGrade(groupIdx, assessmentIdx, studentName, grade) {
+    const g = state.groups[groupIdx];
+    if (!state.grading[g.name].assessments[assessmentIdx].grades) {
+        state.grading[g.name].assessments[assessmentIdx].grades = {};
+    }
+    state.grading[g.name].assessments[assessmentIdx].grades[studentName] = grade;
+}
+
+function saveGrading() {
+    saveState();
+    alert('Qiymətlər saxlanıldı!');
+}
+
+function openGroupDetailsPopup(idx) {
+    const win = window.open("", "_blank", "width=800,height=750,scrollbars=yes");
+    win.name = "GroupDetailsPopup"; 
+    win.document.write(`<html><head><title>Qrup Təfərrüatları: ${state.groups[idx].name}</title><style>${document.querySelector('style').textContent}body { padding: 20px; background: #f7fafc; }.group-details-container { border: none; padding: 0; max-height: none; overflow-y: visible; }.btn { cursor: pointer; }</style></head><body><div id="popupContent" class="group-details-container">Yüklənir...</div></body></html>`);
+    win.document.close();
+    const popupContentDiv = win.document.getElementById('popupContent');
+    win.renderContent = () => { renderGroupDetails(idx, popupContentDiv); };
+    win.renderContent();
+}
+
+addTeacherBtn.onclick = ()=>{
+  const name = teacherNameInput.value.trim(); 
+  if(!name) return alert('Ad daxil edin');
+  if(state.teachers.some(t => t.name === name)) return alert('Bu müəllim artıq mövcuddur!');
+  
+  const role = teacherRoleInput.value;
+  state.teachers.push({name, role}); 
+  teacherNameInput.value=''; 
+  saveState();
+}
+
+addGroupBtn.onclick = ()=>{
+  const name = groupNameInput.value.trim(); 
+  if(!name) return alert('Qrup adı daxil edin');
+  const code = groupCodeInput.value;
+  const start = startDateInput.value.trim(); 
+  if(!/^\d{2}\/\d{2}\/\d{4}$/.test(start)) return alert('Tarix formatı dd/mm/yyyy olmalıdır');
+  
+  const moduleHours = {};
+  document.querySelectorAll('[data-module]').forEach(inp=> moduleHours[inp.dataset.module] = Number(inp.value||40));
+
+  const existingIndex = state.groups.findIndex(g=>g.name===name);
+  const groupObj = {
+    name, 
+    code, 
+    startDate:start, 
+    moduleHours, 
+    assignments: (existingIndex!==-1? state.groups[existingIndex].assignments : {}),
+    taAssignments: (existingIndex!==-1? state.groups[existingIndex].taAssignments : {}),
+    weeklyNotes: (existingIndex!==-1? state.groups[existingIndex].weeklyNotes:{}),
+    archived: false
+  };
+  
+  if(existingIndex===-1) state.groups.push(groupObj); 
+  else state.groups[existingIndex]=groupObj;
+  
+  saveState();
+  alert('Qrup yaradıldı / yeniləndi');
+}
+
+clearBtn.onclick = ()=>{ 
+  groupNameInput.value=''; 
+  startDateInput.value=''; 
+  updateModuleHours(groupCodeInput.value); 
+}
+
+groupsList.onclick = (e)=>{
+  const btn = e.target.closest('button'); 
+  if(!btn) return;
+  
+  if(btn.classList.contains('normal-open-btn')){ 
+      renderGroupDetails(Number(btn.dataset.idx), groupDetails); 
+  }
+  else if(btn.classList.contains('popup-open-btn')){
+      openGroupDetailsPopup(Number(btn.dataset.idx));
+  }
+  else if(btn.dataset.archive){ 
+      const idx = Number(btn.dataset.archive);
+      if(confirm('Qrupu arxivləmək istədiyinizdən əminsiniz?')){ 
+          state.groups[idx].archived = true;
+          saveState();
+          groupDetails.innerHTML='Seçim edilməyib'; 
+      } 
+  }
+  else if(btn.dataset.del){ 
+      if(confirm('Qrup silinsin?')){ 
+          state.groups.splice(Number(btn.dataset.del),1); 
+          saveState();
+          groupDetails.innerHTML='Seçim edilməyib'; 
+      } 
+  }
+}
+
+archivedGroupsList.onclick = (e)=>{
+  const btn = e.target.closest('button'); 
+  if(!btn) return;
+  
+  if(btn.classList.contains('normal-open-btn')){ 
+      renderGroupDetails(Number(btn.dataset.idx), groupDetails); 
+  }
+  else if(btn.dataset.restore){ 
+      const idx = Number(btn.dataset.restore);
+      if(confirm('Qrupu geri qaytarmaq istədiyinizdən əminsiniz?')){ 
+          state.groups[idx].archived = false;
+          saveState();
+          groupDetails.innerHTML='Seçim edilməyib'; 
+      } 
+  }
+  else if(btn.dataset.del){ 
+      if(confirm('Qrup tam silinsin?')){ 
+          state.groups.splice(Number(btn.dataset.del),1); 
+          saveState();
+          groupDetails.innerHTML='Seçim edilməyib'; 
+      } 
+  }
+}
+
+function startFirebaseListener() {
+    db.collection('scheduler_data').doc(GLOBAL_DOC_ID)
+        .onSnapshot(doc => {
+            if (doc.exists) {
+                const newData = doc.data();
+                const isInitialLoad = state.groups.length === 0 && newData.groups && newData.groups.length > 0;
+
+                state = newData;
+                
+                if(!state.nonWorkingHolidays || state.nonWorkingHolidays.length === 0) { 
+                    state.nonWorkingHolidays = HOLIDAYS_RAW.map(h => h.date); 
+                    saveState(); 
+                }
+                
+                if(!state.customHolidays) state.customHolidays = [];
+                if(!state.archivedGroups) state.archivedGroups = [];
+                if(!state.grading) state.grading = {};
+                
+                renderTeachers(); 
+                renderGroups(); 
+                renderHolidays();
+                updateModuleHours(groupCodeInput.value); 
+
+                if (state.groups.length === 0 && !isInitialLoad) {
+                    state.groups.push({name:'CS1-A', code:'CS1', startDate:'06/10/2025', moduleHours: DEFAULT_MODULE_HOURS['CS1/CS2'], assignments:{}, taAssignments:{}, weeklyNotes:{}, archived:false});
+                    state.groups.push({name:'CS3-Y', code:'CS3', startDate:'06/10/2025', moduleHours: DEFAULT_MODULE_HOURS['CS3'], assignments:{}, taAssignments:{}, weeklyNotes:{}, archived:false});
+                    state.groups.push({name:'CS4-H', code:'CS4', startDate:'04/10/2025', moduleHours: DEFAULT_MODULE_HOURS['CS4/CS5'], assignments:{}, taAssignments:{}, weeklyNotes:{}, archived:false});
+                    saveState();
+                }
+                
+            } else {
+                state.nonWorkingHolidays = HOLIDAYS_RAW.map(h => h.date); 
+                state.groups = [];
+                state.teachers = [];
+                state.customHolidays = [];
+                state.archivedGroups = [];
+                state.grading = {};
+                saveState();
+            }
+        }, error => {
+            console.error("Firebase Snapshot Error: ", error);
+            alert("Məlumat dinləməsi zamanı xəta yarandı.");
+        });
+}
+
+// Bütün Qeydlər funksiyaları
+const openAllNotesBtn = document.getElementById('openAllNotesBtn');
+openAllNotesBtn.onclick = () => openAllNotesModal();
+
+function openAllNotesModal() {
+    const modal = document.getElementById('allNotesModal');
+    const content = document.getElementById('allNotesContent');
+    
+    const activeGroups = state.groups.filter(g => !g.archived);
+    
+    if (activeGroups.length === 0) {
+        content.innerHTML = '<p class="muted">Aktiv qrup yoxdur.</p>';
+        modal.classList.add('active');
+        return;
+    }
+
+    // Bütün tarixləri topla
+    const allDates = new Set();
+    activeGroups.forEach(g => {
+        const schedule = computeScheduleForGroup(g);
+        if (schedule.length > 0) {
+            const progStart = parseDateDMY(g.startDate);
+            const progEnd = parseDateDMY(schedule[schedule.length-1].end);
+            
+            let cur = new Date(progStart);
+            while(cur.getDay() !== 2) cur.setDate(cur.getDate() + 1);
+            
+            while(cur <= progEnd) {
+                if(cur >= progStart) allDates.add(formatDateDMY(cur));
+                cur.setDate(cur.getDate() + 7);
+            }
+        }
+    });
+    
+    const sortedDates = Array.from(allDates).sort((a, b) => {
+        return parseDateDMY(a) - parseDateDMY(b);
+    });
+
+    if (sortedDates.length === 0) {
+        content.innerHTML = '<p class="muted">Qeyd tarixi tapılmadı.</p>';
+        modal.classList.add('active');
+        return;
+    }
+
+    // Cədvəl yarat
+    let html = '<table style="width:100%;border-collapse:collapse;"><thead><tr><th style="position:sticky;left:0;background:#f9fafb;z-index:10;min-width:150px;">Qrup</th>';
+    
+    sortedDates.forEach((date, idx) => {
+        html += `<th style="min-width:200px;"><div style="font-size:12px;font-weight:normal;color:var(--muted);">Həftə ${idx+1}</div>${date}</th>`;
+    });
+    
+    html += '</tr></thead><tbody>';
+    
+    // Hər qrup üçün sətir
+    activeGroups.forEach(g => {
+        html += `<tr><td style="position:sticky;left:0;background:#fff;z-index:5;font-weight:600;">${g.name}</td>`;
+        
+        const notes = g.weeklyNotes || {};
+        
+        sortedDates.forEach(date => {
+            const entry = notes[date] || {status:'yellow', text:''};
+            const statusColor = entry.status === 'green' ? 'var(--green)' : 
+                              entry.status === 'orange' ? 'var(--orange)' : 'var(--yellow)';
+            const statusIcon = entry.status === 'green' ? '✓' : 
+                             entry.status === 'orange' ? '⚠️' : '⏳';
+            
+            html += `<td style="padding:8px;border:1px solid #f0f5f9;vertical-align:top;">
+                <div style="display:flex;flex-direction:column;gap:6px;">
+                    <select data-group="${g.name}" data-date="${date}" class="note-status-select select-status-${entry.status}" style="font-size:11px;">
+                        <option value="green" ${entry.status==='green'?'selected':''}>✓ Həll olundu</option>
+                        <option value="yellow" ${entry.status==='yellow'?'selected':''}>⏳ Gələn həftə</option>
+                        <option value="orange" ${entry.status==='orange'?'selected':''}>⚠️ Bu həftə HƏLL</option>
+                    </select>
+                    <textarea data-group="${g.name}" data-date="${date}" class="note-text-input" 
+                        placeholder="Qeyd..." rows="2" 
+                        style="font-size:11px;resize:vertical;min-height:50px;">${entry.text||''}</textarea>
+                </div>
+            </td>`;
+        });
+        
+        html += '</tr>';
+    });
+    
+    html += '</tbody></table>';
+    html += '<div style="margin-top:15px;text-align:center;position:sticky;left:0;">';
+    html += '<button class="btn" onclick="saveAllNotes()">💾 Bütün Dəyişiklikləri Saxla</button>';
+    html += '</div>';
+    
+    content.innerHTML = html;
+    
+    // Status dəyişəndə rəng dəyişsin
+    content.querySelectorAll('.note-status-select').forEach(sel => {
+        sel.onchange = function() {
+            this.className = 'note-status-select select-status-' + this.value;
+        };
+    });
+    
+    modal.classList.add('active');
+}
+
+function closeAllNotesModal() {
+    document.getElementById('allNotesModal').classList.remove('active');
+}
+
+function saveAllNotes() {
+    const content = document.getElementById('allNotesContent');
+    
+    content.querySelectorAll('.note-status-select').forEach(sel => {
+        const groupName = sel.dataset.group;
+        const date = sel.dataset.date;
+        const status = sel.value;
+        const textArea = content.querySelector(`.note-text-input[data-group="${groupName}"][data-date="${date}"]`);
+        const text = textArea ? textArea.value : '';
+        
+        const group = state.groups.find(g => g.name === groupName);
+        if (group) {
+            if (!group.weeklyNotes) group.weeklyNotes = {};
+            group.weeklyNotes[date] = {status, text};
+        }
+    });
+    
+    saveState();
+    alert('Bütün qeydlər saxlanıldı! ✓');
+}
+
+updateModuleHours(groupCodeInput.value);
+</script>
+</body>
+</html>
+<!-- HİSSƏ 3/3 SONU -->

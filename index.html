@@ -223,10 +223,16 @@
           <option value="CS5">CS5 (Seans 5 - 15:30 - 20:15 - həftə sonu - 5 saat/gün)</option>
         </select>
 
-        <label>Başlanğıc tarixi (gün/ay/il)</label>
-        <input id="startDate" placeholder="01/10/2025" />
+       <label>Başlanğıc tarixi (gün/ay/il)</label>
+<input id="startDate" placeholder="01/10/2025" />
 
-        <label>Hər modul üçün tələb olunan ümumi saat</label>
+<label>Modul sayı</label>
+<select id="moduleCount">
+  <option value="5">5 Modul (Standart)</option>
+  <option value="6">6 Modul (+ Programming Fundamentals)</option>
+</select>
+
+<label>Hər modul üçün tələb olunan ümumi saat</label>
         <div id="modulesInputs"></div>
 
         <div style="margin-top:10px">
@@ -392,19 +398,49 @@
     };
     const GLOBAL_DOC_ID = 'global_data';
     
-    const MODULES = [
-      'Network and Network Security Fundamentals',
-      'System Engineering Fundamentals',
-      'Ethical Hacking',
-      'Security Engineering',
-      'IT Governance'
-    ];
+ const MODULES_5 = [
+  'Network and Network Security Fundamentals',
+  'System Engineering Fundamentals',
+  'Ethical Hacking',
+  'Security Engineering',
+  'IT Governance'
+];
+
+const MODULES_6 = [
+  'Network and Network Security Fundamentals',
+  'System Engineering Fundamentals',
+  'Programming Fundamentals',
+  'Ethical Hacking',
+  'Security Engineering',
+  'IT Governance'
+];
     
-    const DEFAULT_MODULE_HOURS = {
-        'CS1/CS2': {'Network and Network Security Fundamentals': 48, 'System Engineering Fundamentals': 88, 'Ethical Hacking': 104, 'Security Engineering': 96, 'IT Governance': 20},
-        'CS3': {'Network and Network Security Fundamentals': 51, 'System Engineering Fundamentals': 90, 'Ethical Hacking': 105, 'Security Engineering': 93, 'IT Governance': 21},
-        'CS4/CS5': {'Network and Network Security Fundamentals': 50, 'System Engineering Fundamentals': 90, 'Ethical Hacking': 105, 'Security Engineering': 95, 'IT Governance': 20}
-    };
+  const DEFAULT_MODULE_HOURS = {
+    'CS1/CS2': {
+        'Network and Network Security Fundamentals': 48,
+        'System Engineering Fundamentals': 88,
+		'Programming Fundamentals': 40,
+        'Ethical Hacking': 104,
+        'Security Engineering': 96,
+        'IT Governance': 20
+    },
+    'CS3': {
+        'Network and Network Security Fundamentals': 51,
+        'System Engineering Fundamentals': 90,
+		'Programming Fundamentals': 39,
+        'Ethical Hacking': 105,
+        'Security Engineering': 93,
+        'IT Governance': 21
+    },
+    'CS4/CS5': {
+        'Network and Network Security Fundamentals': 50,
+        'System Engineering Fundamentals': 90,
+		'Programming Fundamentals': 45,
+        'Ethical Hacking': 105,
+        'Security Engineering': 95,
+        'IT Governance': 20
+    }
+};
 
     const HOLIDAYS_RAW = [
       {date:'01/01/2025', name:'Yeni il'},{date:'02/01/2025', name:'Yeni il'},{date:'03/01/2025', name:'Yeni il'},{date:'20/01/2025', name:'Qara Yanvar'},
@@ -521,23 +557,35 @@
       };
     });
 
-    function updateModuleHours(groupCode) {
-        let defaultHours;
-        if (['CS1', 'CS2'].includes(groupCode)) defaultHours = DEFAULT_MODULE_HOURS['CS1/CS2'];
-        else if (groupCode === 'CS3') defaultHours = DEFAULT_MODULE_HOURS['CS3'];
-        else if (['CS4', 'CS5'].includes(groupCode)) defaultHours = DEFAULT_MODULE_HOURS['CS4/CS5'];
-        else defaultHours = MODULES.reduce((acc, m) => { acc[m] = 40; return acc; }, {});
+function updateModuleHours(groupCode) {
+    const moduleCount = document.getElementById('moduleCount') ? document.getElementById('moduleCount').value : '5';
+    const modulesToShow = moduleCount === '6' ? MODULES_6 : MODULES_5;
+    
+    let defaultHours;
+    if (['CS1', 'CS2'].includes(groupCode)) defaultHours = DEFAULT_MODULE_HOURS['CS1/CS2'];
+    else if (groupCode === 'CS3') defaultHours = DEFAULT_MODULE_HOURS['CS3'];
+    else if (['CS4', 'CS5'].includes(groupCode)) defaultHours = DEFAULT_MODULE_HOURS['CS4/CS5'];
+    else defaultHours = modulesToShow.reduce((acc, m) => { acc[m] = 40; return acc; }, {});
 
-        modulesInputs.innerHTML = '';
-        MODULES.forEach(m => {
-            const defaultVal = defaultHours[m] || 40;
-            const div = document.createElement('div'); div.className='module-row';
-            div.innerHTML = `<div style="flex:1"><label>${m}</label></div><input type="number" min="1" value="${defaultVal}" data-module="${m}" style="width:110px" />`;
-            modulesInputs.appendChild(div);
-        });
-    }
+    modulesInputs.innerHTML = '';
+    modulesToShow.forEach(m => {
+        const defaultVal = defaultHours[m] || 40;
+        const div = document.createElement('div'); 
+        div.className='module-row';
+        div.innerHTML = `<div style="flex:1"><label>${m}</label></div><input type="number" min="1" value="${defaultVal}" data-module="${m}" style="width:110px" />`;
+        modulesInputs.appendChild(div);
+    });
+}
 
     groupCodeInput.onchange = (e) => updateModuleHours(e.target.value);
+
+// BU SƏTRİ ƏLAVƏ EDİN:
+document.addEventListener('DOMContentLoaded', function() {
+    const moduleCountSelect = document.getElementById('moduleCount');
+    if (moduleCountSelect) {
+        moduleCountSelect.onchange = () => updateModuleHours(groupCodeInput.value);
+    }
+});
     
     function getRoleBadge(role) {
       if (role === 'teacher') return '<span class="badge badge-teacher">Müəllim</span>';
@@ -864,7 +912,10 @@ function computeScheduleForGroup(group){
         }
         curDate = advanceToAllowed(curDate);
 
-        for(const module of MODULES){
+    // Qrupun modul sayını müəyyən et
+    const modulesToUse = group.moduleCount === 6 ? MODULES_6 : MODULES_5;
+
+    for(const module of modulesToUse){
             const hours = Number(group.moduleHours[module]||40);
             const daysNeeded = Math.ceil(hours / dailyHours);
             const start = new Date(curDate);
@@ -1218,7 +1269,8 @@ function computeScheduleForGroup(group){
         for(const g of state.groups){
             if (g.archived) continue;
             const gSchedule = computeScheduleForGroup(g);
-            for(const m of MODULES){
+            const gModules = g.moduleCount === 6 ? MODULES_6 : MODULES_5;
+for(const m of gModules){
                 let isAssigned = false;
                 if(g.assignments && g.assignments[m] === teacherName) isAssigned = true;
                 if(g.taAssignments && g.taAssignments[m] === teacherName) isAssigned = true;
@@ -1316,7 +1368,8 @@ function computeScheduleForGroup(group){
             if(!g.assignments && !g.taAssignments) continue;
             const g2Session = SESSIONS[g.code];
             
-            for(const m of MODULES){
+            const gModules = g.moduleCount === 6 ? MODULES_6 : MODULES_5;
+for(const m of gModules){
                 let isAssigned = false;
                 if(g.assignments && g.assignments[m] === teacherName) isAssigned = true;
                 if(g.taAssignments && g.taAssignments[m] === teacherName) isAssigned = true;
@@ -1724,11 +1777,14 @@ addGroupBtn.onclick = ()=>{
   const moduleHours = {};
   document.querySelectorAll('[data-module]').forEach(inp=> moduleHours[inp.dataset.module] = Number(inp.value||40));
 
+ const moduleCount = Number(document.getElementById('moduleCount').value);
+
   const existingIndex = state.groups.findIndex(g=>g.name===name);
   const groupObj = {
     name, 
     code, 
-    startDate:start, 
+    startDate:start,
+    moduleCount: moduleCount,
     moduleHours, 
     assignments: (existingIndex!==-1? state.groups[existingIndex].assignments : {}),
     taAssignments: (existingIndex!==-1? state.groups[existingIndex].taAssignments : {}),

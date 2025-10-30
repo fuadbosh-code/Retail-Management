@@ -2066,16 +2066,17 @@ function renderDashboard() {
       const noteDate = parseDateDMY(dateStr);
       const daysDiff = Math.ceil((noteDate - today) / (1000 * 60 * 60 * 24));
       
-      if (daysDiff >= -7 && daysDiff <= 14) {
-        upcomingNotes.push({
-          group: g.name,
-          date: dateStr,
-          dateObj: noteDate,
-          daysDiff: daysDiff,
-          status: notes[dateStr].status,
-          text: notes[dateStr].text
-        });
-      }
+      if (daysDiff >= -7 && daysDiff <= 14 && notes[dateStr].status !== 'green') {
+  upcomingNotes.push({
+    group: g.name,
+    date: dateStr,
+    dateObj: noteDate,
+    daysDiff: daysDiff,
+    status: notes[dateStr].status,
+    text: notes[dateStr].text
+  });
+}
+
     });
   });
   

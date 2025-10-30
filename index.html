@@ -733,34 +733,45 @@ document.addEventListener('DOMContentLoaded', function() {
       document.getElementById('teacherProfileModal').classList.remove('active');
     }
 
-    async function saveTeacherProfile(idx) {
-      const teacher = state.teachers[idx];
-      const fileInput = document.getElementById('profilePhotoInput');
-      
-      teacher.name = document.getElementById('profileName').value.trim();
-      teacher.role = document.getElementById('profileRole').value;
-      teacher.email = document.getElementById('profileEmail').value.trim();
-      teacher.phone = document.getElementById('profilePhone').value.trim();
-      teacher.bio = document.getElementById('profileBio').value.trim();
-      teacher.note = document.getElementById('profileNote').value.trim();
+   async function saveTeacherProfile(idx) {
+  const teacher = state.teachers[idx];
+  const fileInput = document.getElementById('profilePhotoInput');
+  
+  teacher.name = document.getElementById('profileName').value.trim();
+  teacher.role = document.getElementById('profileRole').value;
+  teacher.email = document.getElementById('profileEmail').value.trim();
+  teacher.phone = document.getElementById('profilePhone').value.trim();
+  teacher.bio = document.getElementById('profileBio').value.trim();
+  teacher.note = document.getElementById('profileNote').value.trim();
 
-      if (fileInput.files && fileInput.files[0]) {
-        const file = fileInput.files[0];
-        const storageRef = storage.ref(`teacher_photos/${Date.now()}_${file.name}`);
-        
-        try {
-          const snapshot = await storageRef.put(file);
-          teacher.photoURL = await snapshot.ref.getDownloadURL();
-        } catch (error) {
-          console.error('Şəkil yüklənmədi:', error);
-          alert('Şəkil yükləmə xətası: ' + error.message);
-        }
-      }
-
+  // ŞƏKİL YÜKLƏMƏ HİSSƏSİ DƏYİŞDİ
+  if (fileInput.files && fileInput.files[0]) {
+    const file = fileInput.files[0];
+    
+    // Şəklin ölçüsünü yoxla (max 500KB)
+    if (file.size > 500000) {
+      alert('Şəkil çox böyükdür! 500KB-dan kiçik olmalıdır.');
+      return;
+    }
+    
+    // Şəkli Base64-ə çevir
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+      teacher.photoURL = e.target.result; // Base64 formatda saxla
       await saveState();
       closeTeacherProfile();
-      alert('Profil yeniləndi!');
-    }
+      renderTeachers();
+      alert('Profil yeniləndi! ✅');
+    };
+    reader.readAsDataURL(file);
+    return; // Funksiyadan çıx
+  }
+
+  await saveState();
+  closeTeacherProfile();
+  renderTeachers();
+  alert('Profil yeniləndi! ✅');
+}
     
     function getAllHolidays() {
       const base = [...HOLIDAYS_RAW];

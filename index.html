@@ -2085,7 +2085,7 @@ function renderDashboard() {
   if (upcomingNotes.length === 0) {
     html += '<p class="small muted">Yaxın tarixdə qeyd yoxdur.</p>';
   } else {
-    upcomingNotes.slice(0, 20).forEach(note => {
+    upcomingNotes.slice(0, 12).forEach(note => {
       const statusColor = note.status === 'green' ? 'var(--green)' : 
                          note.status === 'orange' ? 'var(--orange)' : 'var(--yellow)';
       const statusText = note.status === 'green' ? '✓ Həll olundu' : 

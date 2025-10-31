@@ -1566,7 +1566,149 @@ openDashboardBtn.onclick = () => {
 openGroupsTableBtn.onclick = () => {
     const groupsTableHtml = generateGroupsTableHTML();
     const win = window.open("", "_blank", "width=1200,height=700,scrollbars=yes");
-    win.document.write(`<html><head><title>Qruplar Tablosu</title><style>${document.querySelector('style').textContent}body { padding: 20px; background: #fff; }table { width: 100%; border-collapse: collapse; margin-top: 10px; }th, td { padding: 10px; border: 1px solid #f3f6f8; text-align: left; font-size: 14px; }th { background: #f9fafb; font-weight: 600; }h3, h4 { font-family: Inter; }</style></head><body>${groupsTableHtml}<script>function exportGroupsToExcel(){${exportGroupsToExcel.toString()}};<\/script></body></html>`);
+    
+    // XLSX kitabxanasını popup pəncərəyə əlavə edirik
+    win.document.write(`
+    <html>
+    <head>
+        <title>Qruplar Tablosu</title>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"><\/script>
+        <style>
+            ${document.querySelector('style').textContent}
+            body { padding: 20px; background: #fff; }
+            table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+            th, td { padding: 10px; border: 1px solid #f3f6f8; text-align: left; font-size: 14px; }
+            th { background: #f9fafb; font-weight: 600; }
+            h3, h4 { font-family: Inter; }
+        </style>
+    </head>
+    <body>
+        ${groupsTableHtml}
+        <script>
+            // State məlumatlarını popup pəncərəyə göndəririk
+            const state = ${JSON.stringify(state)};
+            const SESSIONS = ${JSON.stringify(SESSIONS)};
+            
+            // Lazımi funksiyalar
+            function parseDateDMY(s) {
+                const [d,m,y] = s.split('/').map(Number); 
+                return new Date(y,m-1,d);
+            }
+            
+            function formatDateDMY(date) {
+                const d=('0'+date.getDate()).slice(-2); 
+                const m=('0'+(date.getMonth()+1)).slice(-2); 
+                const y=date.getFullYear(); 
+                return d+'/'+m+'/'+y;
+            }
+            
+            function isHoliday(date) {
+                const dateStr = formatDateDMY(date); 
+                if (!state.nonWorkingHolidays || state.nonWorkingHolidays.length === 0) return false; 
+                return state.nonWorkingHolidays.includes(dateStr);
+            }
+            
+            const MODULES_5 = ${JSON.stringify(MODULES_5)};
+            const MODULES_6 = ${JSON.stringify(MODULES_6)};
+            
+            function computeScheduleForGroup(group) {
+                const session = SESSIONS[group.code];
+                const dailyHours = session.hoursPerDay;
+                const allowedWeekdays = session.days;
+                const result = [];
+                let curDate = parseDateDMY(group.startDate);
+                
+                function advanceToAllowed(date) {
+                    let d = new Date(date);
+                    while(true) {
+                        const wd = d.getDay();
+                        if(allowedWeekdays.includes(wd) && !isHoliday(d)) return d;
+                        d.setDate(d.getDate()+1);
+                    }
+                }
+                curDate = advanceToAllowed(curDate);
+                
+                const modulesToUse = group.moduleCount === 6 ? MODULES_6 : MODULES_5;
+                
+                for(const module of modulesToUse) {
+                    const hours = Number(group.moduleHours[module]||40);
+                    const daysNeeded = Math.ceil(hours / dailyHours);
+                    const start = new Date(curDate);
+                    let usedDays=0;
+                    let lastDay = new Date(start);
+                    
+                    while(usedDays < daysNeeded) {
+                        const wd = curDate.getDay();
+                        if(allowedWeekdays.includes(wd) && !isHoliday(curDate)) {
+                            lastDay = new Date(curDate);
+                            usedDays++;
+                        }
+                        curDate.setDate(curDate.getDate()+1);
+                    }
+                    curDate = advanceToAllowed(curDate);
+                    
+                    result.push({
+                        module, 
+                        start: formatDateDMY(start), 
+                        end: formatDateDMY(lastDay), 
+                        hours, 
+                        daysUsed: daysNeeded, 
+                        teacher: (group.assignments && group.assignments[module]) || null,
+                        ta: (group.taAssignments && group.taAssignments[module]) || null,
+                        sessionTime: session.startTime + '-' + session.endTime, 
+                        groupName: group.name, 
+                        groupCode: group.code
+                    });
+                }
+                return result;
+            }
+            
+            // Export funksiyası
+            function exportGroupsToExcel() {
+                const activeGroups = state.groups.filter(g => !g.archived).sort((a, b) => {
+                    return parseDateDMY(a.startDate) - parseDateDMY(b.startDate);
+                });
+
+                if (activeGroups.length === 0) {
+                    alert('Export ediləcək qrup yoxdur.');
+                    return;
+                }
+
+                const wb = XLSX.utils.book_new();
+
+                activeGroups.forEach(g => {
+                    const schedule = computeScheduleForGroup(g);
+                    const wsData = [
+                        ['Qrup: ' + g.name, 'Kod: ' + g.code, 'Başlanğıc: ' + g.startDate, 'Seans: ' + SESSIONS[g.code].startTime + '-' + SESSIONS[g.code].endTime],
+                        [],
+                        ['Modul', 'Başlama', 'Bitiş', 'Saat Aralığı', 'Saat', 'Günlər', 'Müəllim', 'TA']
+                    ];
+
+                    schedule.forEach(s => {
+                        wsData.push([
+                            s.module,
+                            s.start,
+                            s.end,
+                            s.sessionTime,
+                            s.hours,
+                            s.daysUsed,
+                            s.teacher || '-',
+                            s.ta || '-'
+                        ]);
+                    });
+
+                    const ws = XLSX.utils.aoa_to_sheet(wsData);
+                    const sheetName = g.name.replace(/[^\\w\\s]/gi, '').substring(0, 31);
+                    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+                });
+
+                XLSX.writeFile(wb, 'Qruplar_Cedveli_' + formatDateDMY(new Date()).replace(/\\//g, '-') + '.xlsx');
+            }
+        <\/script>
+    </body>
+    </html>
+    `);
+    
     win.document.close();
 }
 

@@ -415,8 +415,8 @@ const MODULES_6 = [
   'IT Governance'
 ];
 
-	const MODULES = [...new Set([...MODULES_5, ...MODULES_6])];
-	
+const MODULES = [...new Set([...MODULES_5, ...MODULES_6])];
+    
   const DEFAULT_MODULE_HOURS = {
     'CS1/CS2': {
         'Network and Network Security Fundamentals': 48,
@@ -1612,6 +1612,7 @@ openGroupsTableBtn.onclick = () => {
             
             const MODULES_5 = ${JSON.stringify(MODULES_5)};
             const MODULES_6 = ${JSON.stringify(MODULES_6)};
+		
             
             function computeScheduleForGroup(group) {
                 const session = SESSIONS[group.code];

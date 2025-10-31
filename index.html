@@ -2389,6 +2389,10 @@ function renderDashboard() {
   html += '</div>'; // 2 sütun grid sonu
   
   // ALT HİSSƏ: Aktiv Qrupların Modul Statusu
+  html += generatePerformanceTable();
+  html += generateMonthlyCalendar();
+  html += generateSessionLoadAnalysis();
+  html += generateModuleCompletionChart();
   html += '<div class="dashboard-card" style="margin-top:15px;">';
   html += '<h3 style="margin-top:0;display:flex;align-items:center;gap:8px;"><span style="font-size:24px;">🎯</span> Aktiv Qrupların Modul Statusu</h3>';
   
@@ -2475,6 +2479,420 @@ setTimeout(() => {
 }, 500);
 
 updateModuleHours(groupCodeInput.value);
+
+// 🏆 PERFORMANS CƏDVƏLİ - QİYMƏT ƏSASLI
+function generatePerformanceTable() {
+    const activeGroups = state.groups.filter(g => !g.archived);
+    
+    if (activeGroups.length === 0) {
+        return '<p class="muted">Aktiv qrup yoxdur.</p>';
+    }
+
+    const groupStats = [];
+
+    activeGroups.forEach(g => {
+        const grading = state.grading && state.grading[g.name];
+        
+        if (!grading || !grading.students || grading.students.length === 0) {
+            groupStats.push({
+                name: g.name,
+                code: g.code,
+                studentCount: 0,
+                avgGrade: 0,
+                hasData: false
+            });
+            return;
+        }
+
+        let totalGrades = 0;
+        let gradeCount = 0;
+
+        // Hər assessment-dən qiymətləri topla
+        if (grading.assessments && grading.assessments.length > 0) {
+            grading.assessments.forEach(assessment => {
+                if (assessment.grades) {
+                    Object.values(assessment.grades).forEach(grade => {
+                        const numGrade = parseFloat(grade);
+                        if (!isNaN(numGrade) && numGrade > 0) {
+                            totalGrades += numGrade;
+                            gradeCount++;
+                        }
+                    });
+                }
+            });
+        }
+
+        const avgGrade = gradeCount > 0 ? (totalGrades / gradeCount).toFixed(2) : 0;
+
+        groupStats.push({
+            name: g.name,
+            code: g.code,
+            studentCount: grading.students.length,
+            assessmentCount: grading.assessments ? grading.assessments.length : 0,
+            avgGrade: parseFloat(avgGrade),
+            hasData: gradeCount > 0
+        });
+    });
+
+    // Ortalamaya görə sırala (ən yüksək əvvəl)
+    groupStats.sort((a, b) => b.avgGrade - a.avgGrade);
+
+    let html = '<div class="dashboard-card">';
+    html += '<h3 style="margin-top:0;display:flex;align-items:center;gap:8px;"><span style="font-size:24px;">🏆</span> Qrup Performans Reytinqi</h3>';
+    html += '<p class="small muted">Qiymətləndirmə sistemindəki ortalama bala görə sıralanıb</p>';
+
+    if (groupStats.every(g => !g.hasData)) {
+        html += '<div style="text-align:center;padding:30px;background:#f9fafb;border-radius:8px;"><p class="muted">Hələ heç bir qrupda qiymət daxil edilməyib.</p><p class="small muted">Qiymətləndirmə bölməsinə keçid edin və tələbələrə qiymət verin.</p></div>';
+    } else {
+        html += '<div style="display:grid;gap:10px;">';
+
+        groupStats.forEach((g, idx) => {
+            let medalIcon = '';
+            let borderColor = '#e6edf3';
+            
+            if (g.hasData) {
+                if (idx === 0) { medalIcon = '🥇'; borderColor = '#FFD700'; }
+                else if (idx === 1) { medalIcon = '🥈'; borderColor = '#C0C0C0'; }
+                else if (idx === 2) { medalIcon = '🥉'; borderColor = '#CD7F32'; }
+            }
+
+            const gradeColor = g.avgGrade >= 80 ? 'var(--green)' : 
+                              g.avgGrade >= 60 ? 'var(--yellow)' : 
+                              g.avgGrade > 0 ? 'var(--red)' : 'var(--muted)';
+
+            html += `<div style="display:flex;align-items:center;gap:15px;padding:15px;border:2px solid ${borderColor};border-radius:8px;background:${g.hasData ? '#fff' : '#f9fafb'};">
+                <div style="width:50px;height:50px;border-radius:50%;background:${g.hasData ? 'linear-gradient(135deg,#667eea,#764ba2)' : '#e6edf3'};color:white;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:20px;flex-shrink:0;">
+                    ${medalIcon || (idx + 1)}
+                </div>
+                <div style="flex:1;">
+                    <div style="font-weight:600;font-size:15px;margin-bottom:3px;">
+                        ${g.name}
+                        <span class="badge" style="background:#e9d5ff;color:#6b21a8;font-size:10px;margin-left:5px;">${g.code}</span>
+                    </div>
+                    <div style="font-size:12px;color:var(--muted);">
+                        ${g.studentCount} tələbə · ${g.assessmentCount} qiymətləndirmə
+                    </div>
+                </div>
+                <div style="text-align:center;min-width:80px;">
+                    ${g.hasData ? `
+                        <div style="font-size:28px;font-weight:700;color:${gradeColor};">${g.avgGrade}</div>
+                        <div style="font-size:11px;color:var(--muted);margin-top:2px;">ortalama</div>
+                    ` : `
+                        <div style="font-size:14px;color:var(--muted);">-</div>
+                        <div style="font-size:11px;color:var(--muted);">məlumat yoxdur</div>
+                    `}
+                </div>
+            </div>`;
+        });
+
+        html += '</div>';
+    }
+
+    html += '</div>';
+    return html;
+}
+
+// 📅 1️⃣ KALENDARİYA GÖRÜNÜŞÜ - Bu ay bitən modullar
+function generateMonthlyCalendar() {
+    const activeGroups = state.groups.filter(g => !g.archived);
+    
+    if (activeGroups.length === 0) {
+        return '<p class="muted">Aktiv qrup yoxdur.</p>';
+    }
+
+    const today = new Date();
+    const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
+    
+    // Bu ay bitən modulları topla
+    const thisMonthModules = [];
+    
+    activeGroups.forEach(g => {
+        const schedule = computeScheduleForGroup(g);
+        schedule.forEach(s => {
+            const endDate = parseDateDMY(s.end);
+            if (endDate.getMonth() === currentMonth && endDate.getFullYear() === currentYear) {
+                thisMonthModules.push({
+                    groupName: g.name,
+                    groupCode: g.code,
+                    module: s.module,
+                    endDate: endDate,
+                    endDateStr: s.end,
+                    teacher: s.teacher || '-',
+                    sessionTime: s.sessionTime
+                });
+            }
+        });
+    });
+
+    // Tarixə görə sırala
+    thisMonthModules.sort((a, b) => a.endDate - b.endDate);
+
+    const monthNames = ['Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'İyun', 
+                       'İyul', 'Avqust', 'Sentyabr', 'Oktyabr', 'Noyabr', 'Dekabr'];
+
+    let html = '<div class="dashboard-card">';
+    html += `<h3 style="margin-top:0;display:flex;align-items:center;gap:8px;"><span style="font-size:24px;">📅</span> ${monthNames[currentMonth]} ${currentYear} - Bitən Modullar</h3>`;
+
+    if (thisMonthModules.length === 0) {
+        html += '<div style="text-align:center;padding:30px;background:#f9fafb;border-radius:8px;">';
+        html += '<p class="muted">Bu ay heç bir modul bitmir.</p>';
+        html += '</div>';
+    } else {
+        html += `<p class="small muted">Bu ay <strong>${thisMonthModules.length}</strong> modul tamamlanacaq</p>`;
+        html += '<div style="display:grid;gap:10px;max-height:400px;overflow-y:auto;padding-right:5px;">';
+        
+        thisMonthModules.forEach((m, idx) => {
+            const daysUntilEnd = Math.ceil((m.endDate - today) / (1000 * 60 * 60 * 24));
+            const isPast = daysUntilEnd < 0;
+            const isToday = daysUntilEnd === 0;
+            
+            let statusBadge = '';
+            let borderColor = '#e6edf3';
+            
+            if (isPast) {
+                statusBadge = '<span style="background:#10b981;color:white;padding:3px 8px;border-radius:12px;font-size:11px;font-weight:600;">✓ Bitdi</span>';
+                borderColor = '#10b981';
+            } else if (isToday) {
+                statusBadge = '<span style="background:#f59e0b;color:white;padding:3px 8px;border-radius:12px;font-size:11px;font-weight:600;">🔥 Bu gün</span>';
+                borderColor = '#f59e0b';
+            } else if (daysUntilEnd <= 3) {
+                statusBadge = '<span style="background:#ef4444;color:white;padding:3px 8px;border-radius:12px;font-size:11px;font-weight:600;">⚠️ Tezliklə</span>';
+                borderColor = '#ef4444';
+            } else {
+                statusBadge = `<span style="background:#6b7280;color:white;padding:3px 8px;border-radius:12px;font-size:11px;font-weight:600;">${daysUntilEnd} gün</span>`;
+            }
+
+            html += `<div style="padding:12px;border-left:4px solid ${borderColor};background:#f9fafb;border-radius:6px;display:flex;justify-content:space-between;align-items:center;gap:10px;">
+                <div style="flex:1;">
+                    <div style="font-weight:600;font-size:14px;margin-bottom:4px;">
+                        ${m.groupName} <span class="badge" style="background:#e9d5ff;color:#6b21a8;font-size:10px;">${m.groupCode}</span>
+                    </div>
+                    <div style="font-size:13px;color:#333;margin-bottom:3px;">${m.module}</div>
+                    <div style="font-size:11px;color:var(--muted);">
+                        📍 ${m.endDateStr} · ⏰ ${m.sessionTime} · 👨‍🏫 ${m.teacher}
+                    </div>
+                </div>
+                <div style="text-align:right;">
+                    ${statusBadge}
+                </div>
+            </div>`;
+        });
+        
+        html += '</div>';
+    }
+
+    html += '</div>';
+    return html;
+}
+
+// ⏰ 2️⃣ SEANS YÜKÜ ANALİZİ - Hansı saatlarda daha çox dərs var
+function generateSessionLoadAnalysis() {
+    const activeGroups = state.groups.filter(g => !g.archived);
+    
+    if (activeGroups.length === 0) {
+        return '<p class="muted">Aktiv qrup yoxdur.</p>';
+    }
+
+    const sessionLoad = {
+        'CS1': { name: '09:00-13:00 (Həftə içi)', groups: [], teachers: new Set() },
+        'CS2': { name: '14:00-18:00 (Həftə içi)', groups: [], teachers: new Set() },
+        'CS3': { name: '19:00-21:45 (Həftə içi)', groups: [], teachers: new Set() },
+        'CS4': { name: '10:00-14:45 (Həftə sonu)', groups: [], teachers: new Set() },
+        'CS5': { name: '15:30-20:15 (Həftə sonu)', groups: [], teachers: new Set() }
+    };
+
+    activeGroups.forEach(g => {
+        sessionLoad[g.code].groups.push(g.name);
+        
+        // Bu qrupdakı bütün müəllimləri topla
+        const schedule = computeScheduleForGroup(g);
+        schedule.forEach(s => {
+            if (s.teacher) sessionLoad[g.code].teachers.add(s.teacher);
+            if (s.ta) sessionLoad[g.code].teachers.add(s.ta);
+        });
+    });
+
+    // Ən yüklü seans
+    let maxLoad = 0;
+    let maxSessionCode = '';
+    Object.keys(sessionLoad).forEach(code => {
+        if (sessionLoad[code].groups.length > maxLoad) {
+            maxLoad = sessionLoad[code].groups.length;
+            maxSessionCode = code;
+        }
+    });
+
+    let html = '<div class="dashboard-card">';
+    html += '<h3 style="margin-top:0;display:flex;align-items:center;gap:8px;"><span style="font-size:24px;">⏰</span> Seans Yükü Analizi</h3>';
+    html += '<p class="small muted">Hər seansdakı qrup və müəllim sayı</p>';
+
+    html += '<div style="display:grid;gap:10px;">';
+
+    Object.keys(sessionLoad).forEach(code => {
+        const session = sessionLoad[code];
+        const groupCount = session.groups.length;
+        const teacherCount = session.teachers.size;
+        const isMaxLoad = code === maxSessionCode && groupCount > 0;
+        
+        const loadPercent = maxLoad > 0 ? (groupCount / maxLoad) * 100 : 0;
+        
+        let loadColor = '#10b981';
+        let loadText = 'Rahat';
+        if (loadPercent > 80) { loadColor = '#ef4444'; loadText = 'Yüklü'; }
+        else if (loadPercent > 50) { loadColor = '#f59e0b'; loadText = 'Orta'; }
+
+        html += `<div style="padding:15px;border:2px solid ${isMaxLoad ? loadColor : '#e6edf3'};border-radius:8px;background:${groupCount > 0 ? '#fff' : '#f9fafb'};">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                <div>
+                    <div style="font-weight:600;font-size:14px;">${code} - ${session.name}</div>
+                    ${isMaxLoad && groupCount > 0 ? '<span style="background:' + loadColor + ';color:white;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:600;margin-top:4px;display:inline-block;">🔥 Ən yüklü seans</span>' : ''}
+                </div>
+                <div style="text-align:right;">
+                    <div style="font-size:24px;font-weight:700;color:${loadColor};">${groupCount}</div>
+                    <div style="font-size:11px;color:var(--muted);">${loadText}</div>
+                </div>
+            </div>
+            
+            ${groupCount > 0 ? `
+                <div style="display:flex;gap:15px;font-size:12px;color:var(--muted);">
+                    <div>📚 <strong>${groupCount}</strong> qrup</div>
+                    <div>👥 <strong>${teacherCount}</strong> müəllim/TA</div>
+                </div>
+                <div style="margin-top:8px;">
+                    <div style="height:6px;background:#e6edf3;border-radius:3px;overflow:hidden;">
+                        <div style="width:${loadPercent}%;height:100%;background:${loadColor};transition:width 0.3s;"></div>
+                    </div>
+                </div>
+                <div style="margin-top:8px;font-size:11px;color:var(--muted);">
+                    Qruplar: ${session.groups.join(', ')}
+                </div>
+            ` : '<p class="small muted">Bu seansta qrup yoxdur</p>'}
+        </div>`;
+    });
+
+    html += '</div>';
+    html += '</div>';
+    return html;
+}
+
+// 📈 4️⃣ QRAFİKLƏR - Modul tamamlanma statistikası
+function generateModuleCompletionChart() {
+    const activeGroups = state.groups.filter(g => !g.archived);
+    
+    if (activeGroups.length === 0) {
+        return '<p class="muted">Aktiv qrup yoxdur.</p>';
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const moduleStats = {
+        completed: 0,
+        inProgress: 0,
+        upcoming: 0,
+        total: 0
+    };
+
+    const moduleDetails = {};
+
+    activeGroups.forEach(g => {
+        const schedule = computeScheduleForGroup(g);
+        
+        schedule.forEach(s => {
+            moduleStats.total++;
+            
+            const startDate = parseDateDMY(s.start);
+            const endDate = parseDateDMY(s.end);
+
+            if (!moduleDetails[s.module]) {
+                moduleDetails[s.module] = { completed: 0, inProgress: 0, upcoming: 0 };
+            }
+
+            if (today > endDate) {
+                moduleStats.completed++;
+                moduleDetails[s.module].completed++;
+            } else if (today >= startDate && today <= endDate) {
+                moduleStats.inProgress++;
+                moduleDetails[s.module].inProgress++;
+            } else {
+                moduleStats.upcoming++;
+                moduleDetails[s.module].upcoming++;
+            }
+        });
+    });
+
+    const completedPercent = moduleStats.total > 0 ? ((moduleStats.completed / moduleStats.total) * 100).toFixed(1) : 0;
+    const inProgressPercent = moduleStats.total > 0 ? ((moduleStats.inProgress / moduleStats.total) * 100).toFixed(1) : 0;
+    const upcomingPercent = moduleStats.total > 0 ? ((moduleStats.upcoming / moduleStats.total) * 100).toFixed(1) : 0;
+
+    let html = '<div class="dashboard-card">';
+    html += '<h3 style="margin-top:0;display:flex;align-items:center;gap:8px;"><span style="font-size:24px;">📈</span> Modul Tamamlanma Statistikası</h3>';
+
+    // Ümumi statistika
+    html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px;">';
+    
+    html += `<div style="text-align:center;padding:15px;background:linear-gradient(135deg,#10b981,#059669);border-radius:8px;color:white;">
+        <div style="font-size:32px;font-weight:700;">${moduleStats.completed}</div>
+        <div style="font-size:12px;opacity:0.9;">✓ Tamamlandı</div>
+        <div style="font-size:11px;opacity:0.8;margin-top:3px;">${completedPercent}%</div>
+    </div>`;
+
+    html += `<div style="text-align:center;padding:15px;background:linear-gradient(135deg,#3b82f6,#2563eb);border-radius:8px;color:white;">
+        <div style="font-size:32px;font-weight:700;">${moduleStats.inProgress}</div>
+        <div style="font-size:12px;opacity:0.9;">🔄 Davam edir</div>
+        <div style="font-size:11px;opacity:0.8;margin-top:3px;">${inProgressPercent}%</div>
+    </div>`;
+
+    html += `<div style="text-align:center;padding:15px;background:linear-gradient(135deg,#6b7280,#4b5563);border-radius:8px;color:white;">
+        <div style="font-size:32px;font-weight:700;">${moduleStats.upcoming}</div>
+        <div style="font-size:12px;opacity:0.9;">⏳ Gözləmədə</div>
+        <div style="font-size:11px;opacity:0.8;margin-top:3px;">${upcomingPercent}%</div>
+    </div>`;
+
+    html += '</div>';
+
+    // Progress bar
+    html += '<div style="margin-bottom:20px;">';
+    html += '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:5px;">';
+    html += `<span>Ümumi Progress</span><span><strong>${moduleStats.completed}</strong> / ${moduleStats.total} modul</span>`;
+    html += '</div>';
+    html += '<div style="height:20px;background:#e6edf3;border-radius:10px;overflow:hidden;display:flex;">';
+    if (moduleStats.total > 0) {
+        html += `<div style="width:${completedPercent}%;background:#10b981;" title="Tamamlandı: ${completedPercent}%"></div>`;
+        html += `<div style="width:${inProgressPercent}%;background:#3b82f6;" title="Davam edir: ${inProgressPercent}%"></div>`;
+        html += `<div style="width:${upcomingPercent}%;background:#6b7280;" title="Gözləmədə: ${upcomingPercent}%"></div>`;
+    }
+    html += '</div></div>';
+
+    // Modul-modul statistika
+    html += '<h4 style="margin-top:20px;margin-bottom:10px;">Modul üzrə təfərrüat:</h4>';
+    html += '<div style="display:grid;gap:8px;max-height:300px;overflow-y:auto;padding-right:5px;">';
+
+    Object.keys(moduleDetails).forEach(moduleName => {
+        const stats = moduleDetails[moduleName];
+        const total = stats.completed + stats.inProgress + stats.upcoming;
+        const completedPct = ((stats.completed / total) * 100).toFixed(0);
+
+        html += `<div style="padding:10px;background:#f9fafb;border-radius:6px;border-left:4px solid #3b82f6;">
+            <div style="font-weight:600;font-size:13px;margin-bottom:6px;">${moduleName}</div>
+            <div style="display:flex;gap:10px;font-size:11px;">
+                <span style="color:#10b981;">✓ ${stats.completed}</span>
+                <span style="color:#3b82f6;">🔄 ${stats.inProgress}</span>
+                <span style="color:#6b7280;">⏳ ${stats.upcoming}</span>
+                <span style="margin-left:auto;font-weight:600;color:var(--muted);">${completedPct}% tamamlandı</span>
+            </div>
+            <div style="height:4px;background:#e6edf3;border-radius:2px;overflow:hidden;margin-top:6px;">
+                <div style="width:${completedPct}%;height:100%;background:#10b981;"></div>
+            </div>
+        </div>`;
+    });
+
+    html += '</div>';
+    html += '</div>';
+    return html;
+}
+
 </script>
 </body>
 </html>

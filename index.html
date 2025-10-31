@@ -2138,10 +2138,9 @@ function openAllNotesModal() {
     });
     
     html += '</tbody></table>';
-    html += '<div style="margin-top:15px;text-align:center;position:sticky;left:0;display:flex;gap:10px;justify-content:center;">';
-	html += '<button class="btn success" onclick="exportNotesToExcel()">📊 Excel-ə Export Et</button>';
-	html += '<button class="btn" onclick="saveAllNotes()">💾 Bütün Dəyişiklikləri Saxla</button>';
-	html += '</div>';
+    html += '<div style="margin-top:15px;text-align:center;position:sticky;left:0;">';
+    html += '<button class="btn" onclick="saveAllNotes()">💾 Bütün Dəyişiklikləri Saxla</button>';
+    html += '</div>';
     
     content.innerHTML = html;
     
@@ -2207,11 +2206,59 @@ function renderDashboard() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   
-  let html = '<div class="dashboard-grid">';
+  let html = '';
   
-  // Yaxın tarixli qeydlər
+  // ÜST HİSSƏ: Statistika Kartları
+  html += '<div class="dashboard-grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr));">';
+  
+  // Aktiv Qruplar
+  html += `<div class="dashboard-card" style="text-align:center;padding:20px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;border:none;">
+    <div style="font-size:42px;font-weight:700;">${activeGroups.length}</div>
+    <div style="font-size:14px;margin-top:8px;opacity:0.9;">Aktiv Qrup</div>
+  </div>`;
+  
+  // Müəllimlər
+  html += `<div class="dashboard-card" style="text-align:center;padding:20px;background:linear-gradient(135deg,#f093fb 0%,#f5576c 100%);color:white;border:none;">
+    <div style="font-size:42px;font-weight:700;">${state.teachers.length}</div>
+    <div style="font-size:14px;margin-top:8px;opacity:0.9;">Müəllim/TA</div>
+  </div>`;
+  
+  // Həll Gözləyən Qeydlər
+  let pendingNotes = 0;
+  activeGroups.forEach(g => {
+    const notes = g.weeklyNotes || {};
+    Object.values(notes).forEach(n => {
+      if (n.status === 'orange') pendingNotes++;
+    });
+  });
+  
+  html += `<div class="dashboard-card" style="text-align:center;padding:20px;background:linear-gradient(135deg,#fa709a 0%,#fee140 100%);color:white;border:none;">
+    <div style="font-size:42px;font-weight:700;">${pendingNotes}</div>
+    <div style="font-size:14px;margin-top:8px;opacity:0.9;">⚠️ TƏCİLİ Qeyd</div>
+  </div>`;
+  
+  // Tamamlanan Modullar
+  let completedModules = 0;
+  activeGroups.forEach(g => {
+    const schedule = computeScheduleForGroup(g);
+    schedule.forEach(s => {
+      if (parseDateDMY(s.end) < today) completedModules++;
+    });
+  });
+  
+  html += `<div class="dashboard-card" style="text-align:center;padding:20px;background:linear-gradient(135deg,#4facfe 0%,#00f2fe 100%);color:white;border:none;">
+    <div style="font-size:42px;font-weight:700;">${completedModules}</div>
+    <div style="font-size:14px;margin-top:8px;opacity:0.9;">✓ Tamamlanmış Modul</div>
+  </div>`;
+  
+  html += '</div>'; // grid end
+  
+  // ORTA HİSSƏ: 2 Sütun Layout
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-top:20px;">';
+  
+  // SOL: Yaxın Həftəlik Qeydlər (Scroll ilə)
   html += '<div class="dashboard-card">';
-  html += '<h3 style="margin-top:0;">📝 Yaxın Həftəlik Qeydlər</h3>';
+  html += '<h3 style="margin-top:0;display:flex;align-items:center;gap:8px;"><span style="font-size:24px;">📌</span> Yaxın Həftəlik Qeydlər</h3>';
   
   let upcomingNotes = [];
   activeGroups.forEach(g => {
@@ -2221,16 +2268,15 @@ function renderDashboard() {
       const daysDiff = Math.ceil((noteDate - today) / (1000 * 60 * 60 * 24));
       
       if (daysDiff >= -7 && daysDiff <= 14 && notes[dateStr].status !== 'green') {
-  upcomingNotes.push({
-    group: g.name,
-    date: dateStr,
-    dateObj: noteDate,
-    daysDiff: daysDiff,
-    status: notes[dateStr].status,
-    text: notes[dateStr].text
-  });
-}
-
+        upcomingNotes.push({
+          group: g.name,
+          date: dateStr,
+          dateObj: noteDate,
+          daysDiff: daysDiff,
+          status: notes[dateStr].status,
+          text: notes[dateStr].text
+        });
+      }
     });
   });
   
@@ -2239,49 +2285,114 @@ function renderDashboard() {
   if (upcomingNotes.length === 0) {
     html += '<p class="small muted">Yaxın tarixdə qeyd yoxdur.</p>';
   } else {
-    upcomingNotes.slice(0, 12).forEach(note => {
-      const statusColor = note.status === 'green' ? 'var(--green)' : 
-                         note.status === 'orange' ? 'var(--orange)' : 'var(--yellow)';
-      const statusText = note.status === 'green' ? '✓ Həll olundu' : 
-                        note.status === 'orange' ? '⚠️ Bu həftə HƏLL' : '⏳ Gələn həftə';
+    html += '<div style="max-height:400px;overflow-y:auto;padding-right:5px;">';
+    upcomingNotes.forEach(note => {
+      const statusColor = note.status === 'orange' ? 'var(--orange)' : 'var(--yellow)';
+      const statusIcon = note.status === 'orange' ? '⚠️' : '⏳';
+      const statusText = note.status === 'orange' ? 'Bu həftə HƏLL' : 'Gələn həftə';
       const daysText = note.daysDiff === 0 ? 'Bu gün' : 
                       note.daysDiff === 1 ? 'Sabah' : 
                       note.daysDiff > 0 ? `${note.daysDiff} gün sonra` : 
                       `${Math.abs(note.daysDiff)} gün əvvəl`;
       
-      html += `<div style="padding:10px;border-left:4px solid ${statusColor};background:#f9fafb;margin-bottom:8px;border-radius:4px;">
-        <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:5px;">
-          <strong style="font-size:13px;">${note.group}</strong>
-          <span style="font-size:11px;color:var(--muted);">${daysText}</span>
+      html += `<div style="padding:12px;border-left:4px solid ${statusColor};background:#f9fafb;margin-bottom:10px;border-radius:6px;box-shadow:0 2px 4px rgba(0,0,0,0.05);">
+        <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:6px;">
+          <strong style="font-size:14px;">${note.group}</strong>
+          <span style="font-size:11px;color:var(--muted);background:white;padding:2px 8px;border-radius:12px;">${daysText}</span>
         </div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:4px;">${note.date} - ${statusText}</div>
-        ${note.text ? `<div style="font-size:12px;">${note.text}</div>` : ''}
+        <div style="font-size:12px;color:var(--muted);margin-bottom:5px;">${note.date} - ${statusIcon} ${statusText}</div>
+        ${note.text ? `<div style="font-size:13px;color:#333;margin-top:6px;padding-top:6px;border-top:1px dashed #e0e0e0;">${note.text}</div>` : ''}
       </div>`;
     });
+    html += '</div>';
   }
   
-  html += '</div>';
+  html += '</div>'; // Sol kart sonu
   
-  // Statistika kartı
+  // SAĞ: Müəllim Yükü Analizi (Scroll ilə)
   html += '<div class="dashboard-card">';
-  html += '<h3 style="margin-top:0;">📈 Statistika</h3>';
-  html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;">
-    <div style="text-align:center;padding:15px;background:#e0f2fe;border-radius:6px;">
-      <div style="font-size:32px;font-weight:700;color:var(--blue);">${activeGroups.length}</div>
-      <div style="font-size:13px;color:var(--muted);margin-top:5px;">Aktiv Qrup</div>
-    </div>
-    <div style="text-align:center;padding:15px;background:#fef3c7;border-radius:6px;">
-      <div style="font-size:32px;font-weight:700;color:#92400e;">${state.teachers.length}</div>
-      <div style="font-size:13px;color:var(--muted);margin-top:5px;">Müəllim</div>
-    </div>
-  </div>`;
-  html += '</div>';
+  html += '<h3 style="margin-top:0;display:flex;align-items:center;gap:8px;"><span style="font-size:24px;">👥</span> Müəllim Yükü Analizi</h3>';
   
-  html += '</div>'; // grid end
+  const teacherLoad = {};
   
-  // Aktiv qrupların modul statusu
-  html += '<div class="dashboard-card">';
-  html += '<h3 style="margin-top:0;">🎯 Aktiv Qrupların Modul Statusu</h3>';
+  activeGroups.forEach(g => {
+    const schedule = computeScheduleForGroup(g);
+    schedule.forEach(s => {
+      // Müəllim
+      if (s.teacher) {
+        if (!teacherLoad[s.teacher]) {
+          teacherLoad[s.teacher] = { 
+            name: s.teacher, 
+            groups: new Set(), 
+            modules: 0,
+            role: state.teachers.find(t => t.name === s.teacher)?.role || 'teacher'
+          };
+        }
+        teacherLoad[s.teacher].groups.add(s.groupName);
+        teacherLoad[s.teacher].modules++;
+      }
+      
+      // TA
+      if (s.ta) {
+        if (!teacherLoad[s.ta]) {
+          teacherLoad[s.ta] = { 
+            name: s.ta, 
+            groups: new Set(), 
+            modules: 0,
+            role: state.teachers.find(t => t.name === s.ta)?.role || 'ta'
+          };
+        }
+        teacherLoad[s.ta].groups.add(s.groupName);
+        teacherLoad[s.ta].modules++;
+      }
+    });
+  });
+  
+  const sortedTeachers = Object.values(teacherLoad).sort((a, b) => b.modules - a.modules);
+  
+  if (sortedTeachers.length === 0) {
+    html += '<p class="small muted">Heç bir müəllim təyin olunmayıb.</p>';
+  } else {
+    html += '<div style="max-height:400px;overflow-y:auto;padding-right:5px;">';
+    
+    sortedTeachers.forEach((t, idx) => {
+      const groupCount = t.groups.size;
+      const roleColor = t.role === 'teacher' ? '#0369a1' : 
+                       t.role === 'ta' ? '#92400e' : '#6b21a8';
+      const roleText = t.role === 'teacher' ? 'Müəllim' : 
+                      t.role === 'ta' ? 'TA' : 'Müəllim/TA';
+      
+      html += `<div style="display:flex;align-items:center;gap:10px;padding:12px;background:#f9fafb;border-radius:6px;margin-bottom:10px;box-shadow:0 2px 4px rgba(0,0,0,0.05);">
+        <div style="width:40px;height:40px;border-radius:50%;background:${roleColor};color:white;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;flex-shrink:0;">
+          ${idx + 1}
+        </div>
+        <div style="flex:1;">
+          <div style="font-weight:600;font-size:14px;margin-bottom:3px;">${t.name}</div>
+          <div style="font-size:11px;color:var(--muted);">${roleText}</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:20px;font-weight:700;color:${roleColor};">${groupCount}</div>
+          <div style="font-size:11px;color:var(--muted);">qrup</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:16px;font-weight:600;color:var(--muted);">${t.modules}</div>
+          <div style="font-size:11px;color:var(--muted);">modul</div>
+        </div>
+      </div>`;
+    });
+    
+    html += '</div>';
+  }
+  
+  html += '</div>'; // Sağ kart sonu
+  
+  html += '</div>'; // 2 sütun grid sonu
+  
+  // ALT HİSSƏ: Aktiv Qrupların Modul Statusu
+  html += '<div class="dashboard-card" style="margin-top:15px;">';
+  html += '<h3 style="margin-top:0;display:flex;align-items:center;gap:8px;"><span style="font-size:24px;">🎯</span> Aktiv Qrupların Modul Statusu</h3>';
+  
+  html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(350px,1fr));gap:12px;">';
   
   activeGroups.forEach(g => {
     const schedule = computeScheduleForGroup(g);
@@ -2299,11 +2410,11 @@ function renderDashboard() {
       }
     });
     
-    html += `<div style="border:1px solid #e6edf3;border-radius:6px;padding:12px;margin-bottom:12px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+    html += `<div style="border:1px solid #e6edf3;border-radius:8px;padding:15px;background:linear-gradient(to bottom,#ffffff,#f9fafb);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
         <div>
           <strong style="font-size:15px;">${g.name}</strong>
-          <span class="badge" style="background:#e9d5ff;color:#6b21a8;margin-left:8px;">${g.code}</span>
+          <span class="badge" style="background:#e9d5ff;color:#6b21a8;margin-left:8px;font-size:10px;">${g.code}</span>
         </div>
       </div>`;
     
@@ -2318,8 +2429,11 @@ function renderDashboard() {
           <span style="font-size:13px;font-weight:600;">📚 ${currentModule.module}</span>
           <span class="status-badge active">Davam edir</span>
         </div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:5px;">
-          ${currentModule.start} - ${currentModule.end} | Müəllim: ${currentModule.teacher || 'Təyin olunmayıb'}
+        <div style="font-size:11px;color:var(--muted);margin-bottom:5px;">
+          ${currentModule.start} - ${currentModule.end}
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:5px;">
+          Müəllim: ${currentModule.teacher || 'Təyin olunmayıb'}
         </div>
         <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:3px;">
           <span>${passedDays} gün keçdi</span>
@@ -2347,7 +2461,8 @@ function renderDashboard() {
     html += '</div>';
   });
   
-  html += '</div>';
+  html += '</div>'; // Grid sonu
+  html += '</div>'; // Kart sonu
   
   container.innerHTML = html;
 }
@@ -2360,117 +2475,6 @@ setTimeout(() => {
 }, 500);
 
 updateModuleHours(groupCodeInput.value);
-
-// Bütün Qeydləri Excel-ə Export et
-function exportNotesToExcel() {
-    const activeGroups = state.groups.filter(g => !g.archived);
-    
-    if (activeGroups.length === 0) {
-        alert('Export ediləcək qrup yoxdur.');
-        return;
-    }
-
-    // Bütün tarixləri topla
-    const allDates = new Set();
-    activeGroups.forEach(g => {
-        const schedule = computeScheduleForGroup(g);
-        if (schedule.length > 0) {
-            const progStart = parseDateDMY(g.startDate);
-            const progEnd = parseDateDMY(schedule[schedule.length-1].end);
-            
-            let cur = new Date(progStart);
-            while(cur.getDay() !== 2) cur.setDate(cur.getDate() + 1);
-            
-            while(cur <= progEnd) {
-                if(cur >= progStart) allDates.add(formatDateDMY(cur));
-                cur.setDate(cur.setDate() + 7);
-            }
-        }
-    });
-    
-    const sortedDates = Array.from(allDates).sort((a, b) => {
-        return parseDateDMY(a) - parseDateDMY(b);
-    });
-
-    if (sortedDates.length === 0) {
-        alert('Export ediləcək qeyd yoxdur.');
-        return;
-    }
-
-    // Excel workbook yarat
-    const wb = XLSX.utils.book_new();
-    
-    // Başlıq sətiri
-    const wsData = [
-        ['Qrup', ...sortedDates.map((d, idx) => `Həftə ${idx+1}\n${d}`)]
-    ];
-    
-    // Hər qrup üçün sətir əlavə et
-    activeGroups.forEach(g => {
-        const notes = g.weeklyNotes || {};
-        const row = [g.name];
-        
-        sortedDates.forEach(date => {
-            const entry = notes[date] || {status:'yellow', text:''};
-            const statusText = entry.status === 'green' ? '✓ Həll olundu' : 
-                              entry.status === 'orange' ? '⚠️ Bu həftə HƏLL' : '⏳ Gələn həftə';
-            const cellText = entry.text ? `${statusText}\n${entry.text}` : statusText;
-            row.push(cellText);
-        });
-        
-        wsData.push(row);
-    });
-
-    // Worksheet yarat
-    const ws = XLSX.utils.aoa_to_sheet(wsData);
-    
-    // Sütun genişliklərini ayarla
-    const colWidths = [{wch: 15}]; // Qrup sütunu
-    sortedDates.forEach(() => colWidths.push({wch: 35})); // Tarix sütunları
-    ws['!cols'] = colWidths;
-    
-    // Sətir hündürlüklərini ayarla
-    const rowHeights = [{hpt: 30}]; // Başlıq sətiri
-    activeGroups.forEach(() => rowHeights.push({hpt: 50})); // Məlumat sətirləri
-    ws['!rows'] = rowHeights;
-    
-    // Rəng kodları əlavə et
-    const range = XLSX.utils.decode_range(ws['!ref']);
-    for (let R = 1; R <= range.e.r; ++R) {
-        const groupName = activeGroups[R-1].name;
-        const notes = state.groups.find(g => g.name === groupName).weeklyNotes || {};
-        
-        for (let C = 1; C <= range.e.c; ++C) {
-            const cellAddress = XLSX.utils.encode_cell({r: R, c: C});
-            if (!ws[cellAddress]) continue;
-            
-            const date = sortedDates[C-1];
-            const entry = notes[date] || {status:'yellow'};
-            
-            // Rəng kodlaşdırması
-            let fillColor = 'FFFFFF00'; // Yellow (default)
-            if (entry.status === 'green') fillColor = 'FF00FF00'; // Green
-            if (entry.status === 'orange') fillColor = 'FFFFA500'; // Orange
-            
-            ws[cellAddress].s = {
-                fill: { fgColor: { rgb: fillColor } },
-                alignment: { wrapText: true, vertical: 'top' },
-                border: {
-                    top: {style: 'thin', color: {rgb: 'FF000000'}},
-                    bottom: {style: 'thin', color: {rgb: 'FF000000'}},
-                    left: {style: 'thin', color: {rgb: 'FF000000'}},
-                    right: {style: 'thin', color: {rgb: 'FF000000'}}
-                }
-            };
-        }
-    }
-    
-    XLSX.utils.book_append_sheet(wb, ws, 'Həftəlik Qeydlər');
-    XLSX.writeFile(wb, `Butun_Qeydler_${formatDateDMY(new Date()).replace(/\//g, '-')}.xlsx`);
-    
-    alert('Excel faylı uğurla export olundu! ✅');
-}
-
 </script>
 </body>
 </html>

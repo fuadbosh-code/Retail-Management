@@ -2138,9 +2138,10 @@ function openAllNotesModal() {
     });
     
     html += '</tbody></table>';
-    html += '<div style="margin-top:15px;text-align:center;position:sticky;left:0;">';
-    html += '<button class="btn" onclick="saveAllNotes()">💾 Bütün Dəyişiklikləri Saxla</button>';
-    html += '</div>';
+    html += '<div style="margin-top:15px;text-align:center;position:sticky;left:0;display:flex;gap:10px;justify-content:center;">';
+	html += '<button class="btn success" onclick="exportNotesToExcel()">📊 Excel-ə Export Et</button>';
+	html += '<button class="btn" onclick="saveAllNotes()">💾 Bütün Dəyişiklikləri Saxla</button>';
+	html += '</div>';
     
     content.innerHTML = html;
     
@@ -2359,6 +2360,117 @@ setTimeout(() => {
 }, 500);
 
 updateModuleHours(groupCodeInput.value);
+
+// Bütün Qeydləri Excel-ə Export et
+function exportNotesToExcel() {
+    const activeGroups = state.groups.filter(g => !g.archived);
+    
+    if (activeGroups.length === 0) {
+        alert('Export ediləcək qrup yoxdur.');
+        return;
+    }
+
+    // Bütün tarixləri topla
+    const allDates = new Set();
+    activeGroups.forEach(g => {
+        const schedule = computeScheduleForGroup(g);
+        if (schedule.length > 0) {
+            const progStart = parseDateDMY(g.startDate);
+            const progEnd = parseDateDMY(schedule[schedule.length-1].end);
+            
+            let cur = new Date(progStart);
+            while(cur.getDay() !== 2) cur.setDate(cur.getDate() + 1);
+            
+            while(cur <= progEnd) {
+                if(cur >= progStart) allDates.add(formatDateDMY(cur));
+                cur.setDate(cur.setDate() + 7);
+            }
+        }
+    });
+    
+    const sortedDates = Array.from(allDates).sort((a, b) => {
+        return parseDateDMY(a) - parseDateDMY(b);
+    });
+
+    if (sortedDates.length === 0) {
+        alert('Export ediləcək qeyd yoxdur.');
+        return;
+    }
+
+    // Excel workbook yarat
+    const wb = XLSX.utils.book_new();
+    
+    // Başlıq sətiri
+    const wsData = [
+        ['Qrup', ...sortedDates.map((d, idx) => `Həftə ${idx+1}\n${d}`)]
+    ];
+    
+    // Hər qrup üçün sətir əlavə et
+    activeGroups.forEach(g => {
+        const notes = g.weeklyNotes || {};
+        const row = [g.name];
+        
+        sortedDates.forEach(date => {
+            const entry = notes[date] || {status:'yellow', text:''};
+            const statusText = entry.status === 'green' ? '✓ Həll olundu' : 
+                              entry.status === 'orange' ? '⚠️ Bu həftə HƏLL' : '⏳ Gələn həftə';
+            const cellText = entry.text ? `${statusText}\n${entry.text}` : statusText;
+            row.push(cellText);
+        });
+        
+        wsData.push(row);
+    });
+
+    // Worksheet yarat
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    
+    // Sütun genişliklərini ayarla
+    const colWidths = [{wch: 15}]; // Qrup sütunu
+    sortedDates.forEach(() => colWidths.push({wch: 35})); // Tarix sütunları
+    ws['!cols'] = colWidths;
+    
+    // Sətir hündürlüklərini ayarla
+    const rowHeights = [{hpt: 30}]; // Başlıq sətiri
+    activeGroups.forEach(() => rowHeights.push({hpt: 50})); // Məlumat sətirləri
+    ws['!rows'] = rowHeights;
+    
+    // Rəng kodları əlavə et
+    const range = XLSX.utils.decode_range(ws['!ref']);
+    for (let R = 1; R <= range.e.r; ++R) {
+        const groupName = activeGroups[R-1].name;
+        const notes = state.groups.find(g => g.name === groupName).weeklyNotes || {};
+        
+        for (let C = 1; C <= range.e.c; ++C) {
+            const cellAddress = XLSX.utils.encode_cell({r: R, c: C});
+            if (!ws[cellAddress]) continue;
+            
+            const date = sortedDates[C-1];
+            const entry = notes[date] || {status:'yellow'};
+            
+            // Rəng kodlaşdırması
+            let fillColor = 'FFFFFF00'; // Yellow (default)
+            if (entry.status === 'green') fillColor = 'FF00FF00'; // Green
+            if (entry.status === 'orange') fillColor = 'FFFFA500'; // Orange
+            
+            ws[cellAddress].s = {
+                fill: { fgColor: { rgb: fillColor } },
+                alignment: { wrapText: true, vertical: 'top' },
+                border: {
+                    top: {style: 'thin', color: {rgb: 'FF000000'}},
+                    bottom: {style: 'thin', color: {rgb: 'FF000000'}},
+                    left: {style: 'thin', color: {rgb: 'FF000000'}},
+                    right: {style: 'thin', color: {rgb: 'FF000000'}}
+                }
+            };
+        }
+    }
+    
+    XLSX.utils.book_append_sheet(wb, ws, 'Həftəlik Qeydlər');
+    XLSX.writeFile(wb, `Butun_Qeydler_${formatDateDMY(new Date()).replace(/\//g, '-')}.xlsx`);
+    
+    alert('Excel faylı uğurla export olundu! ✅');
+}
+
 </script>
 </body>
 </html>

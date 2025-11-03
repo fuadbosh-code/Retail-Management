@@ -186,6 +186,7 @@
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
           <button id="openDashboardBtn" class="dashboard-btn">Müəllimlər Tablosu</button>
           <button id="openGroupsTableBtn" class="dashboard-btn">Qruplar Tablosu</button>
+		  <button id="openCalendarBtn" class="dashboard-btn">📅 Təqvim</button>
           <button id="openGradingBtn" class="btn purple">Qiymətləndirmə</button>
 		  <button id="openAllNotesBtn" class="btn purple">Bütün Qeydlər</button>
           <button id="logoutBtn" class="btn danger">Çıxış</button>
@@ -359,6 +360,54 @@
   </div>
   
   <!-- All Notes Modal -->
+  
+  <!-- Calendar Modal -->
+<div id="calendarModal" class="modal">
+  <div class="modal-content" style="max-width:95%;max-height:95vh;">
+    <div class="modal-header">
+      <h3>📅 Təqvim</h3>
+      <button class="modal-close" onclick="closeCalendarModal()">&times;</button>
+    </div>
+    
+    <div style="display:flex;gap:15px;margin-bottom:15px;flex-wrap:wrap;align-items:center;">
+      <select id="calendarViewType" style="width:150px;">
+        <option value="month">Ay Görünüşü</option>
+        <option value="year">İl Görünüşü</option>
+      </select>
+      
+      <select id="calendarYear" style="width:120px;"></select>
+      <select id="calendarMonth" style="width:150px;"></select>
+      
+      <select id="calendarFilter" style="width:200px;">
+        <option value="all">Bütün Qruplar</option>
+      </select>
+      
+      <select id="calendarTeacherFilter" style="width:200px;">
+        <option value="all">Bütün Müəllimlər</option>
+      </select>
+    </div>
+    
+    <div id="calendarContent"></div>
+    
+    <div style="margin-top:15px;padding:10px;background:#f9fafb;border-radius:6px;display:flex;gap:15px;flex-wrap:wrap;font-size:12px;">
+      <div><span style="display:inline-block;width:16px;height:16px;background:#10b981;border-radius:3px;margin-right:5px;"></span>Dərs Günü</div>
+      <div><span style="display:inline-block;width:16px;height:16px;background:#a855f7;border-radius:3px;margin-right:5px;"></span>Bayram</div>
+      <div><span style="display:inline-block;width:8px;height:8px;background:#f97316;border-radius:50%;margin-right:8px;"></span>Not var</div>
+    </div>
+  </div>
+</div>
+
+<!-- Calendar Day Details Modal -->
+<div id="calendarDayModal" class="modal">
+  <div class="modal-content" style="max-width:700px;">
+    <div class="modal-header">
+      <h3 id="calendarDayTitle"></h3>
+      <button class="modal-close" onclick="closeCalendarDayModal()">&times;</button>
+    </div>
+    <div id="calendarDayContent"></div>
+  </div>
+</div>
+  
 <div id="allNotesModal" class="modal">
   <div class="modal-content" style="max-width:95%;max-height:90vh;">
     <div class="modal-header">
@@ -394,7 +443,8 @@
       nonWorkingHolidays: [], 
       customHolidays: [],
       archivedGroups: [],
-      grading: {}
+      grading: {},
+	  calendarNotes: {}
     };
     const GLOBAL_DOC_ID = 'global_data';
     
@@ -2029,6 +2079,7 @@ function startFirebaseListener() {
                 if(!state.customHolidays) state.customHolidays = [];
                 if(!state.archivedGroups) state.archivedGroups = [];
                 if(!state.grading) state.grading = {};
+				if(!state.calendarNotes) state.calendarNotes = {};
                 
                 renderTeachers(); 
                 renderGroups(); 
@@ -2181,6 +2232,338 @@ function saveAllNotes() {
     saveState();
     alert('Bütün qeydlər saxlanıldı! ✓');
 }
+
+// ============== TƏQVİM SİSTEMİ ==============
+
+const openCalendarBtn = document.getElementById('openCalendarBtn');
+openCalendarBtn.onclick = () => openCalendarModal();
+
+const MONTHS_AZ = ['Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'İyun', 
+                   'İyul', 'Avqust', 'Sentyabr', 'Oktyabr', 'Noyabr', 'Dekabr'];
+const DAYS_AZ = ['B', 'Be', 'Ça', 'Ç', 'Ca', 'C', 'Ş'];
+
+function openCalendarModal() {
+  const modal = document.getElementById('calendarModal');
+  
+  // İlləri doldur
+  const yearSelect = document.getElementById('calendarYear');
+  yearSelect.innerHTML = '';
+  for(let y = 2025; y <= 2030; y++) {
+    yearSelect.innerHTML += `<option value="${y}">${y}</option>`;
+  }
+  yearSelect.value = new Date().getFullYear();
+  
+  // Ayları doldur
+  const monthSelect = document.getElementById('calendarMonth');
+  monthSelect.innerHTML = '';
+  MONTHS_AZ.forEach((m, i) => {
+    monthSelect.innerHTML += `<option value="${i}">${m}</option>`;
+  });
+  monthSelect.value = new Date().getMonth();
+  
+  // Qrup filtrini doldur
+  const filterSelect = document.getElementById('calendarFilter');
+  filterSelect.innerHTML = '<option value="all">Bütün Qruplar</option>';
+  state.groups.filter(g => !g.archived).forEach(g => {
+    filterSelect.innerHTML += `<option value="${g.name}">${g.name}</option>`;
+  });
+  
+  // Müəllim filtrini doldur
+  const teacherFilter = document.getElementById('calendarTeacherFilter');
+  teacherFilter.innerHTML = '<option value="all">Bütün Müəllimlər</option>';
+  state.teachers.forEach(t => {
+    teacherFilter.innerHTML += `<option value="${t.name}">${t.name}</option>`;
+  });
+  
+  // Event listener'lər
+  document.getElementById('calendarViewType').onchange = renderCalendar;
+  document.getElementById('calendarYear').onchange = renderCalendar;
+  document.getElementById('calendarMonth').onchange = renderCalendar;
+  document.getElementById('calendarFilter').onchange = renderCalendar;
+  document.getElementById('calendarTeacherFilter').onchange = renderCalendar;
+  
+  modal.classList.add('active');
+  renderCalendar();
+}
+
+function closeCalendarModal() {
+  document.getElementById('calendarModal').classList.remove('active');
+}
+
+function closeCalendarDayModal() {
+  document.getElementById('calendarDayModal').classList.remove('active');
+}
+
+function renderCalendar() {
+  const viewType = document.getElementById('calendarViewType').value;
+  const year = Number(document.getElementById('calendarYear').value);
+  const month = Number(document.getElementById('calendarMonth').value);
+  const filter = document.getElementById('calendarFilter').value;
+  const teacherFilter = document.getElementById('calendarTeacherFilter').value;
+  
+  const monthSelect = document.getElementById('calendarMonth');
+  monthSelect.style.display = viewType === 'month' ? 'block' : 'none';
+  
+  const container = document.getElementById('calendarContent');
+  
+  if(viewType === 'year') {
+    container.innerHTML = renderYearView(year, filter, teacherFilter);
+  } else {
+    container.innerHTML = renderMonthView(year, month, filter, teacherFilter);
+  }
+}
+
+function renderYearView(year, groupFilter, teacherFilter) {
+  let html = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:15px;">';
+  
+  for(let m = 0; m < 12; m++) {
+    html += `<div style="border:1px solid #e6edf3;border-radius:8px;padding:10px;background:#fff;">
+      <h4 style="margin:0 0 10px 0;text-align:center;color:var(--blue);">${MONTHS_AZ[m]}</h4>
+      ${renderMonthView(year, m, groupFilter, teacherFilter, true)}
+    </div>`;
+  }
+  
+  html += '</div>';
+  return html;
+}
+
+function renderMonthView(year, month, groupFilter, teacherFilter, compact = false) {
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const startDay = firstDay.getDay(); // 0 = Bazar
+  const daysInMonth = lastDay.getDate();
+  
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  
+  let html = '<table style="width:100%;border-collapse:collapse;"><thead><tr>';
+  
+  DAYS_AZ.forEach(d => {
+    html += `<th style="padding:${compact ? '4px' : '8px'};text-align:center;font-size:${compact ? '11px' : '12px'};color:var(--muted);">${d}</th>`;
+  });
+  
+  html += '</tr></thead><tbody><tr>';
+  
+  // Boş günlər (ayın başlanğıcına qədər)
+  for(let i = 0; i < startDay; i++) {
+    html += '<td></td>';
+  }
+  
+  // Günləri doldur
+  for(let day = 1; day <= daysInMonth; day++) {
+    const date = new Date(year, month, day);
+    const dateStr = formatDateDMY(date);
+    
+    const dayData = getDayData(dateStr, groupFilter, teacherFilter);
+    
+  let bgColor = '#fff';
+    let textColor = '#000';
+    let hasNote = false;
+    let noteColor = '';
+    
+    // Dərs günü yoxlaması (əvvəl)
+    if(dayData.hasClass) {
+      bgColor = '#d1fae5';
+      textColor = '#065f46';
+    }
+    
+    // Bayram yoxlaması (ÖNCƏLİK - sonra yoxlanır və üst-üstə yazır)
+    if(isHoliday(date)) {
+      bgColor = '#f3e8ff';
+      textColor = '#7c3aed';
+    }
+    
+    // Not yoxlaması
+    if(state.calendarNotes && state.calendarNotes[dateStr]) {
+      hasNote = true;
+      noteColor = state.calendarNotes[dateStr].status === 'orange' ? '#f97316' : '#fbbf24';
+    }
+    
+    // Bu gün vurğulaması
+    const isToday = date.getTime() === today.getTime();
+    const border = isToday ? 'border:2px solid var(--blue);' : '';
+    
+    html += `<td style="padding:${compact ? '6px 2px' : '12px 4px'};text-align:center;background:${bgColor};color:${textColor};${border}cursor:pointer;position:relative;vertical-align:top;" onclick="openDayDetails('${dateStr}')">
+      <div style="font-weight:${isToday ? '700' : '500'};font-size:${compact ? '11px' : '14px'};">${day}</div>
+      ${hasNote ? `<div style="width:6px;height:6px;background:${noteColor};border-radius:50%;position:absolute;top:4px;right:4px;"></div>` : ''}
+    </td>`;
+    
+    if((startDay + day) % 7 === 0 && day < daysInMonth) {
+      html += '</tr><tr>';
+    }
+  }
+  
+  // Sətiri tamamla
+  const remainingCells = (startDay + daysInMonth) % 7;
+  if(remainingCells !== 0) {
+    for(let i = remainingCells; i < 7; i++) {
+      html += '<td></td>';
+    }
+  }
+  
+  html += '</tr></tbody></table>';
+  return html;
+}
+
+function getDayData(dateStr, groupFilter, teacherFilter) {
+  const result = {
+    hasClass: false,
+    groups: [],
+    teachers: new Set(),
+    sessions: []
+  };
+  
+  const date = parseDateDMY(dateStr);
+  const dayOfWeek = date.getDay();
+  
+  state.groups.filter(g => !g.archived).forEach(g => {
+    if(groupFilter !== 'all' && g.name !== groupFilter) return;
+    
+    const session = SESSIONS[g.code];
+    if(!session.days.includes(dayOfWeek)) return;
+    
+    const schedule = computeScheduleForGroup(g);
+    
+    schedule.forEach(s => {
+      const startDate = parseDateDMY(s.start);
+      const endDate = parseDateDMY(s.end);
+      
+      if(date >= startDate && date <= endDate) {
+        // Müəllim filtri yoxla
+        let matchesTeacher = teacherFilter === 'all' || 
+                            s.teacher === teacherFilter || 
+                            s.ta === teacherFilter;
+        
+        if(matchesTeacher) {
+          result.hasClass = true;
+          result.groups.push({
+            name: g.name,
+            code: g.code,
+            module: s.module,
+            sessionTime: s.sessionTime,
+            teacher: s.teacher || '-',
+            ta: s.ta || '-'
+          });
+          
+          if(s.teacher) result.teachers.add(s.teacher);
+          if(s.ta) result.teachers.add(s.ta);
+        }
+      }
+    });
+  });
+  
+  return result;
+}
+
+function openDayDetails(dateStr) {
+  const modal = document.getElementById('calendarDayModal');
+  const title = document.getElementById('calendarDayTitle');
+  const content = document.getElementById('calendarDayContent');
+  
+  const date = parseDateDMY(dateStr);
+  const dayName = ['Bazar', 'Bazar ertəsi', 'Çərşənbə axşamı', 'Çərşənbə', 'Cümə axşamı', 'Cümə', 'Şənbə'][date.getDay()];
+  
+  title.textContent = `${dateStr} - ${dayName}`;
+  
+  const dayData = getDayData(dateStr, 'all', 'all');
+  
+  let html = '';
+  
+  // Bayram yoxlaması
+  if(isHoliday(date)) {
+    const holidayName = getAllHolidays().find(h => h.date === dateStr)?.name || 'Bayram';
+    html += `<div style="padding:12px;background:#f3e8ff;border-left:4px solid #a855f7;border-radius:6px;margin-bottom:15px;">
+      <strong>🎉 ${holidayName}</strong>
+    </div>`;
+  }
+  
+  // Dərs məlumatları
+  if(dayData.groups.length > 0) {
+    html += '<h4>📚 Bu gün dərslər:</h4>';
+    
+    dayData.groups.forEach(g => {
+      html += `<div style="padding:12px;border:1px solid #e6edf3;border-radius:6px;margin-bottom:10px;background:#f9fafb;">
+        <div style="font-weight:600;margin-bottom:5px;">${g.name} <span class="badge" style="background:#e9d5ff;color:#6b21a8;font-size:10px;">${g.code}</span></div>
+        <div style="font-size:13px;color:#666;margin-bottom:3px;">📖 ${g.module}</div>
+        <div style="font-size:12px;color:var(--muted);">⏰ ${g.sessionTime}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:5px;">
+          👨‍🏫 Müəllim: ${g.teacher} | 👥 TA: ${g.ta}
+        </div>
+      </div>`;
+    });
+  } else {
+    html += '<p class="muted">Bu gün dərs yoxdur.</p>';
+  }
+  
+  // Not bölməsi
+  html += '<div style="margin-top:20px;padding-top:20px;border-top:2px solid #e6edf3;">';
+  html += '<h4>📝 Gün üçün qeyd:</h4>';
+  
+  const note = state.calendarNotes && state.calendarNotes[dateStr] ? state.calendarNotes[dateStr] : {status: 'yellow', text: ''};
+  
+  html += `<div style="margin-bottom:10px;">
+    <label style="display:block;margin-bottom:5px;font-size:13px;">Status:</label>
+    <select id="dayNoteStatus" class="select-status-${note.status}">
+      <option value="yellow" ${note.status==='yellow'?'selected':''}>⚠️ Normal</option>
+      <option value="orange" ${note.status==='orange'?'selected':''}>🔥 Vacib</option>
+    </select>
+  </div>`;
+  
+  html += `<div>
+    <label style="display:block;margin-bottom:5px;font-size:13px;">Qeyd:</label>
+    <textarea id="dayNoteText" rows="3" style="width:100%;padding:8px;border:1px solid #e6edf3;border-radius:6px;font-size:13px;" placeholder="Bu gün üçün qeyd əlavə edin...">${note.text||''}</textarea>
+  </div>`;
+  
+  html += `<div style="margin-top:15px;display:flex;gap:8px;">
+    <button class="btn" onclick="saveDayNote('${dateStr}')">💾 Qeydi Saxla</button>
+    ${note.text ? `<button class="btn danger" onclick="deleteDayNote('${dateStr}')">🗑️ Qeydi Sil</button>` : ''}
+  </div>`;
+  
+  html += '</div>';
+  
+  content.innerHTML = html;
+  
+  // Status rəng dəyişikliyi
+  const statusSelect = document.getElementById('dayNoteStatus');
+  if(statusSelect) {
+    statusSelect.onchange = function() {
+      this.className = 'select-status-' + this.value;
+    };
+  }
+  
+  modal.classList.add('active');
+}
+
+function saveDayNote(dateStr) {
+  const status = document.getElementById('dayNoteStatus').value;
+  const text = document.getElementById('dayNoteText').value.trim();
+  
+  if(!state.calendarNotes) state.calendarNotes = {};
+  
+  state.calendarNotes[dateStr] = {status, text};
+  
+  saveState();
+  closeCalendarDayModal();
+  renderCalendar();
+  
+  alert('Qeyd saxlanıldı! ✅');
+}
+
+function deleteDayNote(dateStr) {
+  if(!confirm('Bu qeydi silmək istədiyinizdən əminsiniz?')) return;
+  
+  if(state.calendarNotes && state.calendarNotes[dateStr]) {
+    delete state.calendarNotes[dateStr];
+  }
+  
+  saveState();
+  closeCalendarDayModal();
+  renderCalendar();
+  
+  alert('Qeyd silindi! ✅');
+}
+
+// ============== TƏQVİM SİSTEMİ SONU ==============
 
 // Tab Navigation
 document.querySelectorAll('.main-tab').forEach(tab => {

@@ -2642,10 +2642,20 @@ function deleteDayAssignment(dateStr, groupName) {
 }
 
 // 📊 AYLIK SAAT ANALİZİ
+// 📊 AYLIK SAAT ANALİZİ
 function generateMonthlyHoursAnalysis() {
   const today = new Date();
-  const currentMonth = today.getMonth();
-  const currentYear = today.getFullYear();
+  
+  // URL-dən və ya default-dan ay/il seç
+  const urlParams = new URLSearchParams(window.location.hash.substring(1));
+  const defaultMonth = today.getMonth();
+  const defaultYear = today.getFullYear();
+  
+  const selectedMonth = parseInt(urlParams.get('analysisMonth')) || defaultMonth;
+  const selectedYear = parseInt(urlParams.get('analysisYear')) || defaultYear;
+  
+  const currentMonth = selectedMonth;
+  const currentYear = selectedYear;
   
   // Ayın ilk və son günləri
   const firstDay = new Date(currentYear, currentMonth, 1);
@@ -2720,19 +2730,35 @@ function generateMonthlyHoursAnalysis() {
     });
   });
   
-  // Müəlimləri ümumi saata görə sırala
+  // Müəllimləri ümumi saata görə sırala
   const sortedTeachers = Object.keys(teacherHours).sort((a, b) => {
     return teacherHours[b].total - teacherHours[a].total;
   });
   
   let html = '<div class="dashboard-card">';
-  html += `<h3 style="margin-top:0;display:flex;align-items:center;gap:8px;">
-    <span style="font-size:24px;">⏱️</span> ${monthNames[currentMonth]} ${currentYear} - Müəllim Saat Analizi
-  </h3>`;
+  
+  // BAŞLIQ VƏ FİLTRLƏR
+  html += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;flex-wrap:wrap;gap:10px;">
+    <h3 style="margin:0;display:flex;align-items:center;gap:8px;">
+      <span style="font-size:24px;">⏱️</span> ${monthNames[currentMonth]} ${currentYear} - Müəllim Saat Analizi
+    </h3>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <select id="analysisMonthSelect" style="padding:6px 10px;border:1px solid #e6edf3;border-radius:6px;font-size:13px;">
+        ${monthNames.map((m, i) => `<option value="${i}" ${i === currentMonth ? 'selected' : ''}>${m}</option>`).join('')}
+      </select>
+      <select id="analysisYearSelect" style="padding:6px 10px;border:1px solid #e6edf3;border-radius:6px;font-size:13px;">
+        ${[2024, 2025, 2026, 2027, 2028, 2029, 2030].map(y => `<option value="${y}" ${y === currentYear ? 'selected' : ''}>${y}</option>`).join('')}
+      </select>
+      <button class="btn secondary" style="padding:6px 12px;font-size:13px;" onclick="changeAnalysisMonth(-1)">← Əvvəlki</button>
+      <button class="btn secondary" style="padding:6px 12px;font-size:13px;" onclick="changeAnalysisMonth(1)">Sonrakı →</button>
+      <button class="btn" style="padding:6px 12px;font-size:13px;" onclick="resetAnalysisMonth()">🔄 Bu Ay</button>
+    </div>
+  </div>`;
+  
   html += `<p class="small muted">Ayın ${firstDay.getDate()} - ${lastDay.getDate()} tarixləri arası dərs saatları</p>`;
   
   if (sortedTeachers.length === 0) {
-    html += '<p class="muted">Bu ay üçün saat məlumatı yoxdur.</p>';
+    html += '<div style="text-align:center;padding:40px;background:#f9fafb;border-radius:8px;"><p class="muted" style="font-size:15px;">📊 Bu ay üçün saat məlumatı yoxdur.</p><p class="small muted">Seçilmiş ayda dərs keçirilməyib və ya müəllim təyin olunmayıb.</p></div>';
   } else {
     html += '<div style="display:grid;gap:12px;max-height:500px;overflow-y:auto;padding-right:5px;">';
     
@@ -2785,7 +2811,63 @@ function generateMonthlyHoursAnalysis() {
   }
   
   html += '</div>';
+  
+  // Event listener'lər əlavə et
+  setTimeout(() => {
+    const monthSelect = document.getElementById('analysisMonthSelect');
+    const yearSelect = document.getElementById('analysisYearSelect');
+    
+    if (monthSelect) {
+      monthSelect.onchange = () => {
+        updateAnalysisURL(parseInt(monthSelect.value), parseInt(yearSelect.value));
+        renderDashboard();
+      };
+    }
+    
+    if (yearSelect) {
+      yearSelect.onchange = () => {
+        updateAnalysisURL(parseInt(monthSelect.value), parseInt(yearSelect.value));
+        renderDashboard();
+      };
+    }
+  }, 100);
+  
   return html;
+}
+
+// URL-i yenilə (səhifə yenilənmədən)
+function updateAnalysisURL(month, year) {
+  const newHash = `#analysisMonth=${month}&analysisYear=${year}`;
+  history.replaceState(null, '', newHash);
+}
+
+// Ayı dəyişdir (±1 ay)
+function changeAnalysisMonth(direction) {
+  const urlParams = new URLSearchParams(window.location.hash.substring(1));
+  const today = new Date();
+  
+  let currentMonth = parseInt(urlParams.get('analysisMonth')) || today.getMonth();
+  let currentYear = parseInt(urlParams.get('analysisYear')) || today.getFullYear();
+  
+  currentMonth += direction;
+  
+  if (currentMonth < 0) {
+    currentMonth = 11;
+    currentYear--;
+  } else if (currentMonth > 11) {
+    currentMonth = 0;
+    currentYear++;
+  }
+  
+  updateAnalysisURL(currentMonth, currentYear);
+  renderDashboard();
+}
+
+// Bu aya qayıt
+function resetAnalysisMonth() {
+  const today = new Date();
+  updateAnalysisURL(today.getMonth(), today.getFullYear());
+  renderDashboard();
 }
 
 // ============== TƏQVİM SİSTEMİ SONU ==============

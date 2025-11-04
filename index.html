@@ -530,16 +530,30 @@ const MODULES = [...new Set([...MODULES_5, ...MODULES_6])];
     };
     function parseTime(timeStr) {const [h, m] = timeStr.split(':').map(Number); return h * 60 + m;}
     
-    async function saveState(){ 
-        try {
-            if (state.groups.length > 0 || state.teachers.length > 0 || state.nonWorkingHolidays.length > 0 || state.customHolidays.length > 0 || state.archivedGroups.length > 0) {
-                 await db.collection('scheduler_data').doc(GLOBAL_DOC_ID).set(state);
-            }
-        } catch (e) {
-            console.error("Error writing document: ", e);
-            alert("Xəta: Məlumatlar Firebase-ə yazıla bilmədi.");
-        }
+    async function saveState() {
+  try {
+    if (!state || Object.keys(state).length === 0) {
+      console.warn("Boş state yazılmadı.");
+      return;
     }
+
+    if (
+      (state.groups && state.groups.length) ||
+      (state.teachers && state.teachers.length) ||
+      (state.nonWorkingHolidays && state.nonWorkingHolidays.length) ||
+      (state.customHolidays && state.customHolidays.length) ||
+      (state.archivedGroups && state.archivedGroups.length)
+    ) {
+      await db.collection('scheduler_data').doc(GLOBAL_DOC_ID).set(state, { merge: true });
+    } else {
+      console.warn("Heç bir dəyişiklik yoxdur, yazılmadı.");
+    }
+  } catch (e) {
+    console.error("Error writing document: ", e);
+    alert("Xəta: Məlumatlar Firebase-ə yazıla bilmədi.");
+  }
+}
+
 
     // AUTH MANAGEMENT
     const loginScreen = document.getElementById('loginScreen');

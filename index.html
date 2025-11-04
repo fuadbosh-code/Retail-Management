@@ -190,6 +190,8 @@
           <button id="openGradingBtn" class="btn purple">Qiymətləndirmə</button>
 		  <button id="openAllNotesBtn" class="btn purple">Bütün Qeydlər</button>
 		  <button id="exportAllDataBtn" class="btn success">📥 Bütün Dataları Export Et</button>
+<button id="importAllDataBtn" class="btn purple">📤 Excel-dən İmport Et</button>
+<input type="file" id="importFileInput" accept=".xlsx" style="display:none;" />		  
           <button id="logoutBtn" class="btn danger">Çıxış</button>
         </div>
       </div>
@@ -3969,6 +3971,284 @@ function generateModuleCompletionChart() {
     html += '</div>';
     return html;
 }
+
+// 📤 EXCEL-DƏN İMPORT ET
+const importAllDataBtn = document.getElementById('importAllDataBtn');
+const importFileInput = document.getElementById('importFileInput');
+
+importAllDataBtn.onclick = () => {
+  importFileInput.click(); // Fayl seçim pəncərəsini aç
+};
+
+importFileInput.onchange = async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = async (event) => {
+    try {
+      const data = new Uint8Array(event.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+
+      console.log('📊 Excel oxunur...');
+      console.log('Sheet adları:', workbook.SheetNames);
+
+      // ========== 1. QRUPLARI OXU ==========
+      const groupsSheet = workbook.Sheets['Qruplar'];
+      if (groupsSheet) {
+        const groupsData = XLSX.utils.sheet_to_json(groupsSheet);
+        console.log('📚 Qruplar tapıldı:', groupsData.length);
+        
+        groupsData.forEach(row => {
+          const groupName = row['Qrup Adı'];
+          let existingGroup = state.groups.find(g => g.name === groupName);
+          
+          if (!existingGroup) {
+            // Yeni qrup əlavə et
+            const newGroup = {
+              name: groupName,
+              code: row['Kod'],
+              startDate: row['Başlanğıc'],
+              moduleCount: row['Modul Sayı'] || 5,
+              archived: row['Status'] === 'Arxiv',
+              moduleHours: {},
+              assignments: {},
+              taAssignments: {},
+              weeklyNotes: {}
+            };
+            state.groups.push(newGroup);
+            existingGroup = newGroup;
+          } else {
+            // Mövcud qrupu yenilə
+            existingGroup.code = row['Kod'];
+            existingGroup.startDate = row['Başlanğıc'];
+            existingGroup.moduleCount = row['Modul Sayı'] || 5;
+            existingGroup.archived = row['Status'] === 'Arxiv';
+          }
+        });
+      }
+
+      // ========== 2. MÜƏLLİMLƏRİ OXU ==========
+      const teachersSheet = workbook.Sheets['Müəllimlər'];
+      if (teachersSheet) {
+        const teachersData = XLSX.utils.sheet_to_json(teachersSheet);
+        console.log('👥 Müəllimlər tapıldı:', teachersData.length);
+        
+        teachersData.forEach(row => {
+          const teacherName = row['Ad Soyad'];
+          const exists = state.teachers.find(t => t.name === teacherName);
+          
+          if (!exists) {
+            let role = 'teacher';
+            if (row['Rol'] === 'TA') role = 'ta';
+            else if (row['Rol'] === 'Müəllim/TA') role = 'both';
+            
+            state.teachers.push({
+              name: teacherName,
+              role: role,
+              email: row['Email'] || '',
+              phone: row['Telefon'] || '',
+              note: row['Qeyd'] || ''
+            });
+          }
+        });
+      }
+
+      // ========== 3. HƏR QRUPUN MODUL TƏYİNATLARINI OXU ==========
+      workbook.SheetNames.forEach(sheetName => {
+        // Qrup sheet-lərini tap (Qruplar, Müəllimlər və s. deyil)
+        if (sheetName !== 'Qruplar' && 
+            sheetName !== 'Müəllimlər' && 
+            sheetName !== 'Həftəlik Qeydlər' && 
+            sheetName !== 'Bayramlar' && 
+            !sheetName.includes('Qiymet')) {
+          
+          const moduleSheet = workbook.Sheets[sheetName];
+          const moduleData = XLSX.utils.sheet_to_json(moduleSheet);
+          
+          if (moduleData.length > 0) {
+            console.log(`📖 ${sheetName} modulları oxunur...`);
+            
+            // İlk sətirdən qrup adını tap
+            const firstRow = XLSX.utils.sheet_to_json(moduleSheet, { header: 1 })[0];
+            let groupName = sheetName;
+            
+            // Əgər sheet adı qrup adıdırsa
+            const group = state.groups.find(g => g.name === groupName || sheetName.includes(g.name));
+            
+            if (group) {
+              // Assignments və TA assignments-i təmizlə
+              group.assignments = {};
+              group.taAssignments = {};
+              group.moduleHours = {};
+              
+              // Modulları oxu (ilk 2 sətiri keç - header)
+              moduleData.slice(2).forEach(row => {
+                const moduleName = row['Modul'];
+                const teacher = row['Müəllim'];
+                const ta = row['TA'];
+                const hours = row['Saat'];
+                
+                if (moduleName && moduleName !== '-') {
+                  // Saatları saxla
+                  if (hours) {
+                    group.moduleHours[moduleName] = Number(hours);
+                  }
+                  
+                  // Müəllimi təyin et
+                  if (teacher && teacher !== '-') {
+                    group.assignments[moduleName] = teacher;
+                  }
+                  
+                  // TA-nı təyin et
+                  if (ta && ta !== '-') {
+                    group.taAssignments[moduleName] = ta;
+                  }
+                }
+              });
+              
+              console.log(`✅ ${groupName} üçün təyinatlar yükləndi:`, 
+                          Object.keys(group.assignments).length, 'müəllim,',
+                          Object.keys(group.taAssignments).length, 'TA');
+            }
+          }
+        }
+      });
+
+      // ========== 4. HƏFTƏLIK QEYDLƏRI OXU ==========
+      const notesSheet = workbook.Sheets['Həftəlik Qeydlər'];
+      if (notesSheet) {
+        const notesData = XLSX.utils.sheet_to_json(notesSheet);
+        console.log('📝 Həftəlik qeydlər tapıldı:', notesData.length);
+        
+        notesData.forEach(row => {
+          const groupName = row['Qrup'];
+          const group = state.groups.find(g => g.name === groupName);
+          
+          if (group) {
+            if (!group.weeklyNotes) group.weeklyNotes = {};
+            
+            let status = 'yellow';
+            if (row['Status'] === 'Həll olundu') status = 'green';
+            else if (row['Status'] === 'Bu həftə HƏLL') status = 'orange';
+            
+            group.weeklyNotes[row['Tarix']] = {
+              status: status,
+              text: row['Qeyd'] || ''
+            };
+          }
+        });
+      }
+
+      // ========== 5. BAYRAYLARI OXU ==========
+      const holidaysSheet = workbook.Sheets['Bayramlar'];
+      if (holidaysSheet) {
+        const holidaysData = XLSX.utils.sheet_to_json(holidaysSheet);
+        console.log('🎉 Bayramlar tapıldı:', holidaysData.length);
+        
+        state.nonWorkingHolidays = [];
+        state.customHolidays = [];
+        
+        holidaysData.forEach(row => {
+          if (row['Seçilib'] === 'Bəli') {
+            state.nonWorkingHolidays.push(row['Tarix']);
+          }
+          
+          if (row['Bayram Adı'] && row['Bayram Adı'].includes('(Xüsusi)')) {
+            state.customHolidays.push({
+              date: row['Tarix'],
+              name: row['Bayram Adı'].replace(' (Xüsusi)', '')
+            });
+          }
+        });
+      }
+
+      // ========== 6. QİYMƏTLƏNDİRMƏ MƏLUMATLARINI OXU ==========
+      workbook.SheetNames.forEach(sheetName => {
+        if (sheetName.includes('Qiymet')) {
+          const gradingSheet = workbook.Sheets[sheetName];
+          const gradingData = XLSX.utils.sheet_to_json(gradingSheet, { header: 1 });
+          
+          if (gradingData.length > 2) {
+            const groupName = sheetName.replace(' Qiymet', '').trim();
+            console.log(`📊 ${groupName} qiymətləri oxunur...`);
+            
+            if (!state.grading) state.grading = {};
+            if (!state.grading[groupName]) {
+              state.grading[groupName] = { students: [], assessments: [] };
+            }
+            
+            // Header sətirini oxu (assessment adları)
+            const headerRow = gradingData[2];
+            const assessmentNames = headerRow.slice(1); // "Tələbə" sütununu keç
+            
+            // Assessment-ləri yarat
+            state.grading[groupName].assessments = [];
+            assessmentNames.forEach(name => {
+              if (name) {
+                state.grading[groupName].assessments.push({
+                  name: name,
+                  date: '',
+                  grades: {}
+                });
+              }
+            });
+            
+            // Tələbə sətirləri (3-cü sətirdən sonra)
+            for (let i = 3; i < gradingData.length; i++) {
+              const row = gradingData[i];
+              const studentName = row[0];
+              
+              if (studentName) {
+                // Tələbəni əlavə et
+                if (!state.grading[groupName].students.includes(studentName)) {
+                  state.grading[groupName].students.push(studentName);
+                }
+                
+                // Qiymətləri əlavə et
+                for (let j = 1; j < row.length; j++) {
+                  const grade = row[j];
+                  const assessmentIndex = j - 1;
+                  
+                  if (grade && state.grading[groupName].assessments[assessmentIndex]) {
+                    state.grading[groupName].assessments[assessmentIndex].grades[studentName] = grade;
+                  }
+                }
+              }
+            }
+            
+            console.log(`✅ ${groupName}: ${state.grading[groupName].students.length} tələbə, ${state.grading[groupName].assessments.length} qiymətləndirmə`);
+          }
+        }
+      });
+
+      // ========== DATANI FIREBASE-Ə SAXLA ==========
+      console.log('💾 Firebase-ə yazılır...');
+      await saveState();
+      
+      // ========== SƏHİFƏNİ YENİLƏ ==========
+      console.log('🔄 Səhifə yenilənir...');
+      renderGroups();
+      renderTeachers();
+      renderHolidays();
+      renderDashboard();
+      
+      alert('✅ Bütün datalar uğurla yükləndi və Firebase-ə yazıldı!\n\n' +
+            '📚 Qruplar: ' + state.groups.length + '\n' +
+            '👥 Müəllimlər: ' + state.teachers.length + '\n' +
+            '🎉 Bayramlar: ' + state.nonWorkingHolidays.length);
+      
+      // Input-u təmizlə
+      importFileInput.value = '';
+      
+    } catch (error) {
+      console.error('❌ İmport xətası:', error);
+      alert('❌ Xəta baş verdi: ' + error.message + '\n\nKonsola bax (F12)');
+    }
+  };
+
+  reader.readAsArrayBuffer(file);
+};
 
 </script>
 </body>

@@ -189,6 +189,7 @@
 		  <button id="openCalendarBtn" class="dashboard-btn">📅 Təqvim</button>
           <button id="openGradingBtn" class="btn purple">Qiymətləndirmə</button>
 		  <button id="openAllNotesBtn" class="btn purple">Bütün Qeydlər</button>
+		  <button id="exportAllDataBtn" class="btn success">📥 Bütün Dataları Export Et</button>
           <button id="logoutBtn" class="btn danger">Çıxış</button>
         </div>
       </div>
@@ -371,9 +372,9 @@
     
     <div style="display:flex;gap:15px;margin-bottom:15px;flex-wrap:wrap;align-items:center;">
       <select id="calendarViewType" style="width:150px;">
-        <option value="month">Ay Görünüşü</option>
-        <option value="year">İl Görünüşü</option>
-      </select>
+		<option value="month">Ay Görünüşü</option>
+		<option value="year" selected>İl Görünüşü</option>
+	 </select>
       
       <select id="calendarYear" style="width:120px;"></select>
       <select id="calendarMonth" style="width:150px;"></select>
@@ -412,8 +413,12 @@
   <div class="modal-content" style="max-width:95%;max-height:90vh;">
     <div class="modal-header">
       <h3>Bütün Qrupların Həftəlik Qeydləri</h3>
+	  <button class="btn secondary" onclick="scrollToClosestDate()" style="margin-bottom:10px; float: right;">📅 İndiki Tarixə Yaxın Qeydə Get</button>
       <button class="modal-close" onclick="closeAllNotesModal()">&times;</button>
     </div>
+	
+	
+	
     <div id="allNotesContent" style="overflow-x:auto;"></div>
   </div>
 </div>
@@ -1007,7 +1012,72 @@ function computeScheduleForGroup(group){
               groupCode: group.code
             });
         }
-        return result;
+        
+		// Layihə mərhələlərini əlavə et
+if (result.length > 0) {
+  const lastModule = result[result.length - 1];
+  const lastModuleEnd = parseDateDMY(lastModule.end);
+  
+  // 1 həftə istirahət
+  const restStart = new Date(lastModuleEnd);
+  restStart.setDate(restStart.getDate() + 1);
+  const restEnd = new Date(restStart);
+  restEnd.setDate(restEnd.getDate() + 6);
+  
+  // Layihə işi (40 gün)
+  const projectStart = new Date(restEnd);
+  projectStart.setDate(projectStart.getDate() + 1);
+  const projectEnd = new Date(projectStart);
+  projectEnd.setDate(projectEnd.getDate() + 39);
+  
+  // Təqdimat günü
+  const presentationDate = new Date(projectEnd);
+  presentationDate.setDate(presentationDate.getDate() + 1);
+  
+  result.push({
+    module: '🏖️ İstirahət',
+    start: formatDateDMY(restStart),
+    end: formatDateDMY(restEnd),
+    hours: 0,
+    daysUsed: 7,
+    teacher: null,
+    ta: null,
+    sessionTime: '-',
+    groupName: group.name,
+    groupCode: group.code,
+    isRest: true
+  });
+  
+  result.push({
+    module: '💼 Layihə İşi',
+    start: formatDateDMY(projectStart),
+    end: formatDateDMY(projectEnd),
+    hours: 0,
+    daysUsed: 40,
+    teacher: null,
+    ta: null,
+    sessionTime: '-',
+    groupName: group.name,
+    groupCode: group.code,
+    isProject: true
+  });
+  
+  result.push({
+    module: '🎓 Təqdimat Günü',
+    start: formatDateDMY(presentationDate),
+    end: formatDateDMY(presentationDate),
+    hours: 0,
+    daysUsed: 1,
+    teacher: null,
+    ta: null,
+    sessionTime: '-',
+    groupName: group.name,
+    groupCode: group.code,
+    isPresentation: true
+  });
+}
+		
+		return result;
     }
     
     function renderGroupDetails(idx, targetElement){
@@ -2114,6 +2184,137 @@ function startFirebaseListener() {
 const openAllNotesBtn = document.getElementById('openAllNotesBtn');
 openAllNotesBtn.onclick = () => openAllNotesModal();
 
+const exportAllDataBtn = document.getElementById('exportAllDataBtn');
+exportAllDataBtn.onclick = () => exportAllDataToExcel();
+
+function exportAllDataToExcel() {
+  const wb = XLSX.utils.book_new();
+  
+  // 1. Qruplar
+  const groupsData = [['Qrup Adı', 'Kod', 'Başlanğıc', 'Modul Sayı', 'Status']];
+  state.groups.forEach(g => {
+    groupsData.push([
+      g.name,
+      g.code,
+      g.startDate,
+      g.moduleCount || 5,
+      g.archived ? 'Arxiv' : 'Aktiv'
+    ]);
+  });
+  const wsGroups = XLSX.utils.aoa_to_sheet(groupsData);
+  XLSX.utils.book_append_sheet(wb, wsGroups, 'Qruplar');
+  
+  // 2. Müəllimlər
+  const teachersData = [['Ad Soyad', 'Rol', 'Email', 'Telefon', 'Qeyd']];
+  state.teachers.forEach(t => {
+    teachersData.push([
+      t.name,
+      t.role === 'teacher' ? 'Müəllim' : t.role === 'ta' ? 'TA' : 'Müəllim/TA',
+      t.email || '',
+      t.phone || '',
+      t.note || ''
+    ]);
+  });
+  const wsTeachers = XLSX.utils.aoa_to_sheet(teachersData);
+  XLSX.utils.book_append_sheet(wb, wsTeachers, 'Müəllimlər');
+  
+  // 3. Hər qrup üçün modul cədvəli
+  state.groups.filter(g => !g.archived).forEach(g => {
+    const schedule = computeScheduleForGroup(g);
+    const scheduleData = [
+      [g.name + ' - Modul Cədvəli'],
+      [],
+      ['Modul', 'Başlama', 'Bitiş', 'Saat', 'Günlər', 'Müəllim', 'TA']
+    ];
+    
+    schedule.forEach(s => {
+      scheduleData.push([
+        s.module,
+        s.start,
+        s.end,
+        s.hours,
+        s.daysUsed,
+        s.teacher || '-',
+        s.ta || '-'
+      ]);
+    });
+    
+    const ws = XLSX.utils.aoa_to_sheet(scheduleData);
+    const sheetName = g.name.replace(/[^\w\s]/gi, '').substring(0, 31);
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  });
+  
+  // 4. Haftalık Qeydlər
+  const notesData = [['Qrup', 'Tarix', 'Status', 'Qeyd']];
+  state.groups.forEach(g => {
+    const notes = g.weeklyNotes || {};
+    Object.keys(notes).forEach(date => {
+      const statusText = notes[date].status === 'green' ? 'Həll olundu' :
+                        notes[date].status === 'orange' ? 'Bu həftə HƏLL' : 'Gələn həftə';
+      notesData.push([
+        g.name,
+        date,
+        statusText,
+        notes[date].text || ''
+      ]);
+    });
+  });
+  const wsNotes = XLSX.utils.aoa_to_sheet(notesData);
+  XLSX.utils.book_append_sheet(wb, wsNotes, 'Həftəlik Qeydlər');
+  
+  // 5. Bayramlar
+  const holidaysData = [['Tarix', 'Bayram Adı', 'Seçilib']];
+  const allHolidays = getAllHolidays();
+  allHolidays.forEach(h => {
+    holidaysData.push([
+      h.date,
+      h.name,
+      state.nonWorkingHolidays.includes(h.date) ? 'Bəli' : 'Xeyr'
+    ]);
+  });
+  const wsHolidays = XLSX.utils.aoa_to_sheet(holidaysData);
+  XLSX.utils.book_append_sheet(wb, wsHolidays, 'Bayramlar');
+  
+  // 6. Qiymətləndirmə (əgər varsa)
+  if (state.grading && Object.keys(state.grading).length > 0) {
+    Object.keys(state.grading).forEach(groupName => {
+      const grading = state.grading[groupName];
+      if (grading.students && grading.students.length > 0) {
+        const gradingData = [[groupName + ' - Qiymətləndirmə'], []];
+        
+        // Header
+        const header = ['Tələbə'];
+        if (grading.assessments) {
+          grading.assessments.forEach(a => header.push(a.name));
+        }
+        gradingData.push(header);
+        
+        // Tələbələr
+        grading.students.forEach(student => {
+          const row = [student];
+          if (grading.assessments) {
+            grading.assessments.forEach(a => {
+              row.push(a.grades && a.grades[student] ? a.grades[student] : '');
+            });
+          }
+          gradingData.push(row);
+        });
+        
+        const ws = XLSX.utils.aoa_to_sheet(gradingData);
+        const sheetName = (groupName + ' Qiymet').replace(/[^\w\s]/gi, '').substring(0, 31);
+        XLSX.utils.book_append_sheet(wb, ws, sheetName);
+      }
+    });
+  }
+  
+  // Excel'i yüklə
+  const today = new Date();
+  const filename = `IT_Tedris_Backup_${today.getDate()}-${today.getMonth()+1}-${today.getFullYear()}.xlsx`;
+  XLSX.writeFile(wb, filename);
+  
+  alert('✅ Bütün datalar uğurla Excel faylına export edildi!');
+}
+
 function openAllNotesModal() {
     const modal = document.getElementById('allNotesModal');
     const content = document.getElementById('allNotesContent');
@@ -2122,7 +2323,31 @@ function openAllNotesModal() {
     
     if (activeGroups.length === 0) {
         content.innerHTML = '<p class="muted">Aktiv qrup yoxdur.</p>';
-        modal.classList.add('active');
+        // İndiki tarixə yaxın qeydi tap və scroll et
+setTimeout(() => {
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  
+  let closestDate = null;
+  let closestDiff = Infinity;
+  
+  sortedDates.forEach(dateStr => {
+    const noteDate = parseDateDMY(dateStr);
+    const diff = Math.abs(noteDate - today);
+    if (diff < closestDiff) {
+      closestDiff = diff;
+      closestDate = dateStr;
+    }
+  });
+  
+  if (closestDate) {
+    const targetCell = content.querySelector(`[data-date="${closestDate}"]`);
+    if (targetCell) {
+      targetCell.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }
+}, 300);
+		modal.classList.add('active');
         return;
     }
 
@@ -2234,6 +2459,50 @@ function saveAllNotes() {
     saveState();
     alert('Bütün qeydlər saxlanıldı! ✓');
 }
+
+// 📅 İndiki tarixə ən yaxın qeydi tap və ora scroll et
+function scrollToClosestDate() {
+    const content = document.getElementById('allNotesContent');
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // Bütün tarixləri topla
+    const allDateCells = content.querySelectorAll('th');
+    let closestDate = null;
+    let closestDiff = Infinity;
+    
+    allDateCells.forEach(cell => {
+        const dateText = cell.textContent.trim();
+        // Tarix formatını yoxla (dd/mm/yyyy)
+        const dateMatch = dateText.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+        
+        if (dateMatch) {
+            const dateStr = dateMatch[0];
+            const noteDate = parseDateDMY(dateStr);
+            const diff = Math.abs(noteDate - today);
+            
+            if (diff < closestDiff) {
+                closestDiff = diff;
+                closestDate = cell;
+            }
+        }
+    });
+    
+    if (closestDate) {
+        closestDate.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Ən yaxın tarixi vurğula (3 saniyə)
+        closestDate.style.background = '#fbbf24';
+        closestDate.style.transition = 'background 0.5s';
+        setTimeout(() => {
+            closestDate.style.background = '';
+        }, 3000);
+        
+        alert('✅ İndiki tarixə ən yaxın qeyd: ' + closestDate.textContent.match(/\d{2}\/\d{2}\/\d{4}/)[0]);
+    } else {
+        alert('❌ Tarix tapılmadı!');
+    }
+}
+
 
 // ============== TƏQVİM SİSTEMİ ==============
 
@@ -2644,6 +2913,8 @@ function deleteDayAssignment(dateStr, groupName) {
 // 📊 AYLIK SAAT ANALİZİ
 // 📊 AYLIK SAAT ANALİZİ
 function generateMonthlyHoursAnalysis() {
+// Rol filtri
+const roleFilter = document.getElementById('roleFilterSelect')?.value || 'teacher';
   const today = new Date();
   
   // URL-dən və ya default-dan ay/il seç
@@ -2731,9 +3002,21 @@ function generateMonthlyHoursAnalysis() {
   });
   
   // Müəllimləri ümumi saata görə sırala
-  const sortedTeachers = Object.keys(teacherHours).sort((a, b) => {
-    return teacherHours[b].total - teacherHours[a].total;
-  });
+  // Filtrlənmiş müəllimlər
+const filteredTeachers = Object.keys(teacherHours).filter(teacherName => {
+  const teacher = state.teachers.find(t => t.name === teacherName);
+  const role = teacher?.role || 'teacher';
+  
+  if (roleFilter === 'all') return true;
+  if (roleFilter === 'teacher') return role === 'teacher' || role === 'both';
+  if (roleFilter === 'ta') return role === 'ta' || role === 'both';
+  if (roleFilter === 'both') return role === 'both';
+  return true;
+});
+
+const sortedTeachers = filteredTeachers.sort((a, b) => {
+  return teacherHours[b].total - teacherHours[a].total;
+});
   
   let html = '<div class="dashboard-card">';
   
@@ -2742,6 +3025,16 @@ function generateMonthlyHoursAnalysis() {
     <h3 style="margin:0;display:flex;align-items:center;gap:8px;">
       <span style="font-size:24px;">⏱️</span> ${monthNames[currentMonth]} ${currentYear} - Müəllim Saat Analizi
     </h3>
+	<div style="display:flex;gap:8px;align-items:center;">
+  <label style="font-size:13px;color:var(--muted);">Rol:</label>
+  <select id="roleFilterSelect" style="padding:6px 10px;border:1px solid #e6edf3;border-radius:6px;font-size:13px;">
+    <option value="teacher" selected>Müəllimlər</option>
+    <option value="ta">TA-lar</option>
+    <option value="both">Müəllim/TA</option>
+    <option value="all">Hamısı</option>
+  </select>
+</div>
+	
     <div style="display:flex;gap:8px;flex-wrap:wrap;">
       <select id="analysisMonthSelect" style="padding:6px 10px;border:1px solid #e6edf3;border-radius:6px;font-size:13px;">
         ${monthNames.map((m, i) => `<option value="${i}" ${i === currentMonth ? 'selected' : ''}>${m}</option>`).join('')}
@@ -2830,6 +3123,13 @@ function generateMonthlyHoursAnalysis() {
         renderDashboard();
       };
     }
+	const roleFilterSelect = document.getElementById('roleFilterSelect');
+if (roleFilterSelect) {
+  roleFilterSelect.onchange = () => {
+    renderDashboard();
+  };
+}
+	
   }, 100);
   
   return html;
@@ -3149,8 +3449,81 @@ function renderDashboard() {
         <div class="module-progress-bar">
           <div class="module-progress-fill" style="width:${progress}%;"></div>
         </div>
+     </div>`;
+    } else {
+  // Layihə mərhələlərini yoxla
+  const allModules = schedule;
+  const restModule = allModules.find(m => m.isRest);
+  const projectModule = allModules.find(m => m.isProject);
+  const presentationModule = allModules.find(m => m.isPresentation);
+  
+  if (restModule) {
+    const restStart = parseDateDMY(restModule.start);
+    const restEnd = parseDateDMY(restModule.end);
+    
+    if (today >= restStart && today <= restEnd) {
+      const daysLeft = Math.ceil((restEnd - today) / (1000 * 60 * 60 * 24));
+      html += `<div class="module-progress" style="background:#e0f2fe;border:2px solid #0284c7;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
+          <span style="font-size:13px;font-weight:600;">🏖️ İstirahət</span>
+          <span class="status-badge" style="background:#0284c7;color:white;">Davam edir</span>
+        </div>
+        <div style="font-size:12px;color:var(--muted);">
+          ${daysLeft === 0 ? 'Bu gün bitir' : daysLeft + ' gün qalıb'} • ${restModule.start} - ${restModule.end}
+        </div>
       </div>`;
-    } else if (nextModule) {
+    }
+  }
+  
+  if (projectModule) {
+    const projectStart = parseDateDMY(projectModule.start);
+    const projectEnd = parseDateDMY(projectModule.end);
+    
+    if (today >= projectStart && today <= projectEnd) {
+      const daysLeft = Math.ceil((projectEnd - today) / (1000 * 60 * 60 * 24));
+      const totalDays = 40;
+      const passedDays = totalDays - daysLeft;
+      const progress = (passedDays / totalDays) * 100;
+      
+      html += `<div class="module-progress" style="background:#fef3c7;border:2px solid #f59e0b;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
+          <span style="font-size:13px;font-weight:600;">💼 Layihə İşi</span>
+          <span class="status-badge" style="background:#f59e0b;color:white;">Hazırlanır</span>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:5px;">
+          ${projectModule.start} - ${projectModule.end}
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:3px;">
+          <span>${passedDays} gün keçdi</span>
+          <span>${daysLeft} gün qalıb</span>
+        </div>
+        <div class="module-progress-bar">
+          <div class="module-progress-fill" style="width:${progress}%;background:#f59e0b;"></div>
+        </div>
+      </div>`;
+    }
+  }
+  
+  if (presentationModule && !currentModule && !restModule && !projectModule) {
+    const presentationDate = parseDateDMY(presentationModule.start);
+    const daysUntil = Math.ceil((presentationDate - today) / (1000 * 60 * 60 * 24));
+    
+    if (daysUntil >= 0 && daysUntil <= 14) {
+      html += `<div class="module-progress" style="background:#ddd6fe;border:2px solid #8b5cf6;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
+          <span style="font-size:13px;font-weight:600;">🎓 Təqdimat</span>
+          <span class="status-badge" style="background:#8b5cf6;color:white;">Yaxınlaşır</span>
+        </div>
+        <div style="font-size:12px;color:var(--muted);">
+          ${daysUntil === 0 ? 'Bu gün!' : daysUntil + ' gün sonra'} • ${presentationModule.start}
+        </div>
+      </div>`;
+    }
+  }
+	
+	}
+
+if (nextModule) {
       const daysUntilStart = Math.ceil((parseDateDMY(nextModule.start) - today) / (1000 * 60 * 60 * 24));
       html += `<div class="module-progress">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">

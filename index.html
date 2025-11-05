@@ -2294,23 +2294,6 @@ function exportAllDataToExcel() {
     const wsDayAssign = XLSX.utils.aoa_to_sheet(dayAssignData);
     XLSX.utils.book_append_sheet(wb, wsDayAssign, 'Gün Təyinatları');
   }
-  // 5. Təqvim Gün Təyinatları
-if (state.dayAssignments && Object.keys(state.dayAssignments).length > 0) {
-  const dayAssignData = [['Qrup', 'Tarix', 'Müəllim', 'TA']];
-  
-  Object.keys(state.dayAssignments).forEach(key => {
-    const assignment = state.dayAssignments[key];
-    dayAssignData.push([
-      assignment.groupName,
-      assignment.date,
-      assignment.teacher || '',
-      assignment.ta || ''
-    ]);
-  });
-  
-  const wsDayAssign = XLSX.utils.aoa_to_sheet(dayAssignData);
-  XLSX.utils.book_append_sheet(wb, wsDayAssign, 'Gün Təyinatları');
-}
   // 5. Bayramlar
   const holidaysData = [['Tarix', 'Bayram Adı', 'Seçilib']];
   const allHolidays = getAllHolidays();

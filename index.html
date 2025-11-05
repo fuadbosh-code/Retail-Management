@@ -454,6 +454,8 @@
 	  calendarNotes: {},
 	  dayAssignments: {} // Gün-gün müəllim təyinatları
     };
+	let userRole = 'viewer'; // İstifadəçi rolu
+	let auditLog = []; // Dəyişiklik tarixçəsi
     const GLOBAL_DOC_ID = 'global_data';
     
  const MODULES_5 = [
@@ -530,8 +532,28 @@ const MODULES = [...new Set([...MODULES_5, ...MODULES_6])];
     };
     function parseTime(timeStr) {const [h, m] = timeStr.split(':').map(Number); return h * 60 + m;}
     
-    async function saveState() {
+ async function saveState() {
   try {
+    // 🆕 ROL YOXLAMASI
+    if (userRole === 'viewer') {
+      alert('❌ Sizin dəyişiklik icazəniz yoxdur!');
+      return;
+    }
+    
+    if (userRole === 'ta') {
+      // TA yalnız qiymətləri dəyişə bilər
+      await db.collection('scheduler_data').doc(GLOBAL_DOC_ID).update({
+        grading: state.grading
+      });
+      
+      // 🆕 AUDIT LOG ƏLAVƏ ET
+      await logAction('Qiymətləndirmə yeniləndi');
+      
+      alert('✅ Qiymətlər saxlanıldı!');
+      return;
+    }
+    
+    // Admin hər şeyi yaza bilər
     if (!state || Object.keys(state).length === 0) {
       console.warn("Boş state yazılmadı.");
       return;
@@ -545,12 +567,34 @@ const MODULES = [...new Set([...MODULES_5, ...MODULES_6])];
       (state.archivedGroups && state.archivedGroups.length)
     ) {
       await db.collection('scheduler_data').doc(GLOBAL_DOC_ID).set(state, { merge: true });
+      
+      // 🆕 AUDIT LOG ƏLAVƏ ET
+      await logAction('Sistemdə dəyişiklik edildi');
+      
     } else {
       console.warn("Heç bir dəyişiklik yoxdur, yazılmadı.");
     }
   } catch (e) {
     console.error("Error writing document: ", e);
     alert("Xəta: Məlumatlar Firebase-ə yazıla bilmədi.");
+  }
+}
+
+// 🆕 YENİ FUNKSIYA - AUDIT LOG
+async function logAction(action) {
+  try {
+    const logEntry = {
+      user: auth.currentUser.email,
+      role: userRole,
+      action: action,
+      timestamp: new Date().toISOString(),
+      date: formatDateDMY(new Date())
+    };
+    
+    await db.collection('audit_logs').add(logEntry);
+    console.log('📝 Log yazıldı:', action);
+  } catch (e) {
+    console.error('Log yazma xətası:', e);
   }
 }
 
@@ -565,17 +609,107 @@ const MODULES = [...new Set([...MODULES_5, ...MODULES_6])];
     const loginError = document.getElementById('loginError');
     const userInfo = document.getElementById('userInfo');
 
-    auth.onAuthStateChanged(user => {
-      if (user) {
-        loginScreen.classList.add('hidden');
-        mainApp.classList.remove('hidden');
-        userInfo.textContent = `👤 ${user.email}`;
-        startFirebaseListener();
-      } else {
-        loginScreen.classList.remove('hidden');
-        mainApp.classList.add('hidden');
+    auth.onAuthStateChanged(async user => {
+  if (user) {
+    loginScreen.classList.add('hidden');
+    mainApp.classList.remove('hidden');
+    
+    // 🆕 ROLUNU YÜKLƏ
+    await loadUserRole(user.email);
+    
+    userInfo.innerHTML = `👤 ${user.email} ${getRoleBadgeHTML()}`;
+    startFirebaseListener();
+  } else {
+    loginScreen.classList.remove('hidden');
+    mainApp.classList.add('hidden');
+  }
+});
+
+// 🆕 YENİ FUNKSIYA - ROLUNU YÜKLƏYIR
+async function loadUserRole(email) {
+  try {
+    const roleDoc = await db.collection('users_roles').doc(email).get();
+    if (roleDoc.exists) {
+      userRole = roleDoc.data().role || 'viewer';
+      console.log('👤 İstifadəçi rolu:', userRole);
+    } else {
+      // İlk dəfə girən admin kimi qeyd olunur
+      await db.collection('users_roles').doc(email).set({
+        role: 'admin',
+        permissions: ['all']
+      });
+      userRole = 'admin';
+    }
+    
+    // UI-ni yenilə
+    applyRoleRestrictions();
+    
+  } catch (e) {
+    console.error('Rol yüklənmə xətası:', e);
+    userRole = 'viewer';
+    alert('⚠️ Rol yüklənə bilmədi. Baxış rejimində davam edirik.');
+  }
+}
+
+// 🆕 YENİ FUNKSIYA - ROL BADGE HTML
+function getRoleBadgeHTML() {
+  if (userRole === 'admin') {
+    return '<span class="badge" style="background:#10b981;color:white;margin-left:8px;">Admin</span>';
+  } else if (userRole === 'ta') {
+    return '<span class="badge badge-ta" style="margin-left:8px;">TA</span>';
+  } else {
+    return '<span class="badge" style="background:#6b7280;color:white;margin-left:8px;">Baxış</span>';
+  }
+}
+
+// 🆕 YENİ FUNKSIYA - UI MƏHDUDLAŞDIRMASI
+function applyRoleRestrictions() {
+  if (userRole === 'ta') {
+    // TA üçün məhdudiyyətlər
+    const restrictedButtons = [
+      'addGroupBtn', 'addTeacherBtn', 'exportAllDataBtn', 
+      'importAllDataBtn', 'clearBtn', 'selectAllHolidaysBtn',
+      'saveHolidaysBtn', 'addCustomHolidayBtn', 'manageHolidaysBtn'
+    ];
+    
+    restrictedButtons.forEach(id => {
+      const btn = document.getElementById(id);
+      if (btn) {
+        btn.style.display = 'none';
       }
     });
+    
+    // Tabları gizlət
+    document.querySelector('[data-page="groups"]')?.style.setProperty('display', 'none', 'important');
+    document.querySelector('[data-page="teachers"]')?.style.setProperty('display', 'none', 'important');
+    document.querySelector('[data-page="holidays"]')?.style.setProperty('display', 'none', 'important');
+    
+    // Dashboard-da bəzi kartları gizlət
+    setTimeout(() => {
+      document.querySelectorAll('.dashboard-btn').forEach(btn => {
+        if (!btn.id.includes('Grading')) {
+          btn.style.opacity = '0.5';
+          btn.style.pointerEvents = 'none';
+        }
+      });
+    }, 500);
+    
+  } else if (userRole === 'viewer') {
+    // Viewer üçün hər şey readonly
+    setTimeout(() => {
+      document.querySelectorAll('button.btn').forEach(btn => {
+        if (!btn.id.includes('logout') && !btn.id.includes('Dashboard') && !btn.id.includes('Table')) {
+          btn.style.display = 'none';
+        }
+      });
+      
+      document.querySelectorAll('input, select, textarea').forEach(input => {
+        input.setAttribute('readonly', 'true');
+        input.style.opacity = '0.6';
+      });
+    }, 500);
+  }
+}
 
     loginBtn.onclick = async () => {
       const email = loginEmail.value.trim();
@@ -1904,38 +2038,69 @@ function renderGradingForGroup(groupIdx) {
 
     const groupGrading = state.grading[g.name];
 
-    let html = `<h4>${g.name} - Qiymətləndirmə</h4>`;
+    let html = `<h4>${g.name} - Qiymətləndirmə ${getRoleBadgeHTML()}</h4>`;
+    
+    // 🆕 AUDIT LOG DÜYMƏSI (ADMIN ÜÇÜN)
+    if (userRole === 'admin') {
+      html += '<button class="btn secondary" onclick="showAuditLog()" style="float:right;margin-top:-35px;">📋 Dəyişiklik Tarixçəsi</button>';
+    }
+    
+    // 🆕 TA və VIEWER ÜÇÜN MƏHDUDLAŞDIRMA
+    const canAddStudent = userRole === 'admin';
+    const canEditGrades = userRole !== 'viewer';
     
     html += '<div style="margin-top:15px;"><h5>Tələbələr</h5>';
-    html += '<div style="display:flex;gap:8px;margin-bottom:10px;">';
-    html += '<input id="newStudentName" placeholder="Tələbə adı" style="flex:1;" />';
-    html += '<button class="btn" onclick="addStudent(' + groupIdx + ')">Tələbə Əlavə Et</button>';
-    html += '</div>';
+    
+    if (canAddStudent) {
+      html += '<div style="display:flex;gap:8px;margin-bottom:10px;">';
+      html += '<input id="newStudentName" placeholder="Tələbə adı" style="flex:1;" />';
+      html += '<button class="btn" onclick="addStudent(' + groupIdx + ')">Tələbə Əlavə Et</button>';
+      html += '</div>';
+    }
 
     if (groupGrading.students.length === 0) {
         html += '<p class="muted small">Tələbə əlavə edilməyib.</p>';
     } else {
-        html += '<table><thead><tr><th>Ad</th><th>Əməliyyat</th></tr></thead><tbody>';
+        html += '<table><thead><tr><th>Ad</th>';
+        if (canAddStudent) {
+          html += '<th>Əməliyyat</th>';
+        }
+        html += '</tr></thead><tbody>';
         groupGrading.students.forEach((student, idx) => {
-            html += `<tr><td>${student}</td><td><button class="btn danger" style="padding:4px 8px;font-size:11px;" onclick="deleteStudent(${groupIdx}, ${idx})">Sil</button></td></tr>`;
+            html += `<tr><td>${student}</td>`;
+            if (canAddStudent) {
+              html += `<td><button class="btn danger" style="padding:4px 8px;font-size:11px;" onclick="deleteStudent(${groupIdx}, ${idx})">Sil</button></td>`;
+            }
+            html += '</tr>';
         });
         html += '</tbody></table>';
     }
     html += '</div>';
 
     html += '<div style="margin-top:20px;"><h5>Qiymətləndirmə Bölmələri</h5>';
-    html += '<div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">';
-    html += '<input id="newAssessmentName" placeholder="Bölmə adı (məs: Quiz 1)" style="flex:1;min-width:150px;" />';
-    html += '<input id="newAssessmentDate" placeholder="Tarix (gün/ay/il)" style="width:120px;" />';
-    html += '<button class="btn" onclick="addAssessment(' + groupIdx + ')">Bölmə Əlavə Et</button>';
-    html += '</div>';
+    
+    if (canAddStudent) {
+      html += '<div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">';
+      html += '<input id="newAssessmentName" placeholder="Bölmə adı (məs: Quiz 1)" style="flex:1;min-width:150px;" />';
+      html += '<input id="newAssessmentDate" placeholder="Tarix (gün/ay/il)" style="width:120px;" />';
+      html += '<button class="btn" onclick="addAssessment(' + groupIdx + ')">Bölmə Əlavə Et</button>';
+      html += '</div>';
+    }
 
     if (groupGrading.assessments.length === 0) {
         html += '<p class="muted small">Qiymətləndirmə bölməsi əlavə edilməyib.</p>';
     } else {
-        html += '<table><thead><tr><th>Ad</th><th>Tarix</th><th>Əməliyyat</th></tr></thead><tbody>';
+        html += '<table><thead><tr><th>Ad</th><th>Tarix</th>';
+        if (canAddStudent) {
+          html += '<th>Əməliyyat</th>';
+        }
+        html += '</tr></thead><tbody>';
         groupGrading.assessments.forEach((assessment, idx) => {
-            html += `<tr><td>${assessment.name}</td><td>${assessment.date || '-'}</td><td><button class="btn danger" style="padding:4px 8px;font-size:11px;" onclick="deleteAssessment(${groupIdx}, ${idx})">Sil</button></td></tr>`;
+            html += `<tr><td>${assessment.name}</td><td>${assessment.date || '-'}</td>`;
+            if (canAddStudent) {
+              html += `<td><button class="btn danger" style="padding:4px 8px;font-size:11px;" onclick="deleteAssessment(${groupIdx}, ${idx})">Sil</button></td>`;
+            }
+            html += '</tr>';
         });
         html += '</tbody></table>';
     }
@@ -1953,13 +2118,18 @@ function renderGradingForGroup(groupIdx) {
             html += `<tr><td><strong>${student}</strong></td>`;
             groupGrading.assessments.forEach((assessment, aIdx) => {
                 const grade = assessment.grades && assessment.grades[student] ? assessment.grades[student] : '';
-                html += `<td><input type="text" value="${grade}" style="width:80px;padding:4px;" onchange="updateGrade(${groupIdx}, ${aIdx}, '${student}', this.value)" /></td>`;
+                const readOnly = canEditGrades ? '' : 'readonly';
+                const bgColor = canEditGrades ? '#fff' : '#f9fafb';
+                html += `<td><input type="text" value="${grade}" ${readOnly} style="width:80px;padding:4px;background:${bgColor};" onchange="updateGrade(${groupIdx}, ${aIdx}, '${student}', this.value)" /></td>`;
             });
             html += '</tr>';
         });
 
         html += '</tbody></table></div>';
-        html += '<button class="btn" style="margin-top:10px;" onclick="saveGrading()">Qiymətləri Saxla</button>';
+        
+        if (canEditGrades) {
+          html += '<button class="btn" style="margin-top:10px;" onclick="saveGrading()">Qiymətləri Saxla</button>';
+        }
         html += '</div>';
     }
 
@@ -2037,6 +2207,52 @@ function updateGrade(groupIdx, assessmentIdx, studentName, grade) {
 function saveGrading() {
     saveState();
     alert('Qiymətlər saxlanıldı!');
+}
+
+// 🆕 YENİ FUNKSIYA - AUDIT LOG GÖSTƏR
+function showAuditLog() {
+  const modal = document.getElementById('gradingModal');
+  const content = document.getElementById('gradingContent');
+  
+  content.innerHTML = '<div style="text-align:center;padding:40px;"><div style="font-size:48px;">⏳</div><p>Tarixçə yüklənir...</p></div>';
+  modal.classList.add('active');
+  
+  db.collection('audit_logs')
+    .orderBy('timestamp', 'desc')
+    .limit(100)
+    .get()
+    .then(snapshot => {
+      let html = '<h3>📋 Dəyişiklik Tarixçəsi</h3>';
+      html += '<p class="small muted">Son 100 əməliyyat</p>';
+      
+      if (snapshot.empty) {
+        html += '<p class="muted" style="text-align:center;padding:40px;">Hələ log yoxdur</p>';
+      } else {
+        html += '<div style="max-height:500px;overflow-y:auto;"><table><thead><tr><th>Tarix</th><th>İstifadəçi</th><th>Rol</th><th>Əməliyyat</th></tr></thead><tbody>';
+        
+        snapshot.forEach(doc => {
+          const log = doc.data();
+          const roleBadge = log.role === 'admin' ? '<span class="badge" style="background:#10b981;color:white;">Admin</span>' :
+                           log.role === 'ta' ? '<span class="badge badge-ta">TA</span>' :
+                           '<span class="badge" style="background:#6b7280;color:white;">Baxış</span>';
+          
+          html += `<tr>
+            <td style="font-size:11px;">${log.date}<br><span style="color:var(--muted);">${new Date(log.timestamp).toLocaleTimeString('az-AZ')}</span></td>
+            <td>${log.user}</td>
+            <td>${roleBadge}</td>
+            <td>${log.action}</td>
+          </tr>`;
+        });
+        
+        html += '</tbody></table></div>';
+      }
+      
+      html += '<button class="btn secondary" onclick="closeGradingModal()" style="margin-top:15px;">Bağla</button>';
+      content.innerHTML = html;
+    })
+    .catch(error => {
+      content.innerHTML = '<p class="muted" style="color:red;">Xəta: ' + error.message + '</p>';
+    });
 }
 
 function openGroupDetailsPopup(idx) {

@@ -2293,7 +2293,18 @@ function exportAllDataToExcel() {
     
     const wsDayAssign = XLSX.utils.aoa_to_sheet(dayAssignData);
     XLSX.utils.book_append_sheet(wb, wsDayAssign, 'Gün Təyinatları');
+	// --- Təqvim Qeydləri (calendarNotes) əlavə et ---
+if (state.calendarNotes && Object.keys(state.calendarNotes).length > 0) {
+  const calNotesData = [['Tarix', 'Status', 'Qeyd']];
+  Object.keys(state.calendarNotes).forEach(date => {
+    const n = state.calendarNotes[date] || {};
+    calNotesData.push([ date, n.status || '', n.text || '' ]);
+  });
+  const wsCalNotes = XLSX.utils.aoa_to_sheet(calNotesData);
+  XLSX.utils.book_append_sheet(wb, wsCalNotes, 'Təqvim Qeydləri');
+}
   }
+  
   // 5. Bayramlar
   const holidaysData = [['Tarix', 'Bayram Adı', 'Seçilib']];
   const allHolidays = getAllHolidays();
@@ -4250,6 +4261,25 @@ if (dayAssignSheet) {
     
     console.log(`✅ ${dayKey} üçün təyinat: ${teacher} / ${ta}`);
   });
+}
+// ========== Təqvim Qeydlərini OXU ==========
+const calNotesSheet = workbook.Sheets['Təqvim Qeydləri'];
+if (calNotesSheet) {
+  const calNotesData = XLSX.utils.sheet_to_json(calNotesSheet, { header: 1 });
+  // İlk sətir başlıqdır, 2-ci sıradan etibarən məlumat var
+  for (let i = 1; i < calNotesData.length; i++) {
+    const row = calNotesData[i];
+    if (!row || row.length === 0) continue;
+    const date = row[0] ? row[0].toString().trim() : null;
+    const status = row[1] ? row[1].toString().trim() : '';
+    const text = row[2] ? row[2].toString().trim() : '';
+
+    if (date) {
+      if (!state.calendarNotes) state.calendarNotes = {};
+      state.calendarNotes[date] = { status: status, text: text };
+      console.log(`✅ Təqvim qeydi yükləndi: ${date} -> ${status}`);
+    }
+  }
 }
       // ========== 5. BAYRAYLARI OXU ==========
       const holidaysSheet = workbook.Sheets['Bayramlar'];

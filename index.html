@@ -2277,7 +2277,40 @@ function exportAllDataToExcel() {
   });
   const wsNotes = XLSX.utils.aoa_to_sheet(notesData);
   XLSX.utils.book_append_sheet(wb, wsNotes, 'Həftəlik Qeydlər');
+  // 5. Təqvim Gün Təyinatları (dayAssignments)
+  if (state.dayAssignments && Object.keys(state.dayAssignments).length > 0) {
+    const dayAssignData = [['Qrup', 'Tarix', 'Müəllim', 'TA']];
+    
+    Object.keys(state.dayAssignments).forEach(key => {
+      const assignment = state.dayAssignments[key];
+      dayAssignData.push([
+        assignment.groupName,
+        assignment.date,
+        assignment.teacher || '',
+        assignment.ta || ''
+      ]);
+    });
+    
+    const wsDayAssign = XLSX.utils.aoa_to_sheet(dayAssignData);
+    XLSX.utils.book_append_sheet(wb, wsDayAssign, 'Gün Təyinatları');
+  }
+  // 5. Təqvim Gün Təyinatları
+if (state.dayAssignments && Object.keys(state.dayAssignments).length > 0) {
+  const dayAssignData = [['Qrup', 'Tarix', 'Müəllim', 'TA']];
   
+  Object.keys(state.dayAssignments).forEach(key => {
+    const assignment = state.dayAssignments[key];
+    dayAssignData.push([
+      assignment.groupName,
+      assignment.date,
+      assignment.teacher || '',
+      assignment.ta || ''
+    ]);
+  });
+  
+  const wsDayAssign = XLSX.utils.aoa_to_sheet(dayAssignData);
+  XLSX.utils.book_append_sheet(wb, wsDayAssign, 'Gün Təyinatları');
+}
   // 5. Bayramlar
   const holidaysData = [['Tarix', 'Bayram Adı', 'Seçilib']];
   const allHolidays = getAllHolidays();
@@ -4017,12 +4050,25 @@ importFileInput.onchange = async (e) => {
           const groupName = row['Qrup Adı'];
           let existingGroup = state.groups.find(g => g.name === groupName);
           
+          // Tarixi düzgün oxu (Excel serial number olabilər)
+          let startDate = row['Başlanğıc'];
+          if (typeof startDate === 'number') {
+            // Excel serial number-u tarixə çevir
+            const excelEpoch = new Date(1899, 11, 30);
+            const date = new Date(excelEpoch.getTime() + startDate * 86400000);
+            startDate = formatDateDMY(date);
+          } else if (startDate) {
+            startDate = startDate.toString().trim();
+          }
+          
+          console.log(`📅 ${groupName} başlanğıc tarixi: ${startDate}`);
+          
           if (!existingGroup) {
             // Yeni qrup əlavə et
             const newGroup = {
               name: groupName,
               code: row['Kod'],
-              startDate: row['Başlanğıc'],
+              startDate: startDate,
               moduleCount: row['Modul Sayı'] || 5,
               archived: row['Status'] === 'Arxiv',
               moduleHours: {},
@@ -4069,6 +4115,7 @@ importFileInput.onchange = async (e) => {
       }
 
       // ========== 3. HƏR QRUPUN MODUL TƏYİNATLARINI OXU ==========
+      // ========== 3. HƏR QRUPUN MODUL TƏYİNATLARINI OXU ==========
       workbook.SheetNames.forEach(sheetName => {
         // Qrup sheet-lərini tap (Qruplar, Müəllimlər və s. deyil)
         if (sheetName !== 'Qruplar' && 
@@ -4078,52 +4125,94 @@ importFileInput.onchange = async (e) => {
             !sheetName.includes('Qiymet')) {
           
           const moduleSheet = workbook.Sheets[sheetName];
-          const moduleData = XLSX.utils.sheet_to_json(moduleSheet);
+          const allRows = XLSX.utils.sheet_to_json(moduleSheet, { header: 1, defval: '' });
           
-          if (moduleData.length > 0) {
-            console.log(`📖 ${sheetName} modulları oxunur...`);
-            
-            // İlk sətirdən qrup adını tap
-            const firstRow = XLSX.utils.sheet_to_json(moduleSheet, { header: 1 })[0];
+          console.log(`📖 ${sheetName} sheet oxunur...`, allRows);
+          
+          if (allRows.length > 0) {
+            // İlk sətirdən qrup adını tap (məs: "Qrup: CS1-Az")
             let groupName = sheetName;
+            const firstRowText = allRows[0].join(' ');
+            const groupMatch = firstRowText.match(/Qrup:\s*([^\s,]+)/i);
+            if (groupMatch) {
+              groupName = groupMatch[1];
+            }
             
-            // Əgər sheet adı qrup adıdırsa
-            const group = state.groups.find(g => g.name === groupName || sheetName.includes(g.name));
+            console.log(`🎯 Qrup adı: ${groupName}`);
+            
+            // State-dən qrupu tap
+            const group = state.groups.find(g => g.name === groupName);
             
             if (group) {
+              console.log(`✅ Qrup tapıldı: ${groupName}`);
+              
               // Assignments və TA assignments-i təmizlə
               group.assignments = {};
               group.taAssignments = {};
               group.moduleHours = {};
               
-              // Modulları oxu (ilk 2 sətiri keç - header)
-              moduleData.slice(2).forEach(row => {
-                const moduleName = row['Modul'];
-                const teacher = row['Müəllim'];
-                const ta = row['TA'];
-                const hours = row['Saat'];
-                
-                if (moduleName && moduleName !== '-') {
-                  // Saatları saxla
-                  if (hours) {
-                    group.moduleHours[moduleName] = Number(hours);
-                  }
-                  
-                  // Müəllimi təyin et
-                  if (teacher && teacher !== '-') {
-                    group.assignments[moduleName] = teacher;
-                  }
-                  
-                  // TA-nı təyin et
-                  if (ta && ta !== '-') {
-                    group.taAssignments[moduleName] = ta;
-                  }
+              // Modul sətrlərini tap (header-dən sonra)
+              let dataStartRow = -1;
+              for (let i = 0; i < allRows.length; i++) {
+                const row = allRows[i];
+                if (row[0] && row[0].toString().toLowerCase().includes('modul')) {
+                  dataStartRow = i + 1;
+                  break;
                 }
-              });
+              }
+              
+              if (dataStartRow === -1) {
+                console.warn(`⚠️ ${groupName} üçün modul header tapılmadı`);
+                return;
+              }
+              
+              console.log(`📊 Data başlanğıc sətir: ${dataStartRow}`);
+              
+              // Modulları oxu
+              for (let i = dataStartRow; i < allRows.length; i++) {
+                const row = allRows[i];
+                
+                // Boş sətri keç
+                if (!row || row.length === 0 || !row[0]) continue;
+                
+                const moduleName = row[0]?.toString().trim();
+                const startDate = row[1]?.toString().trim();
+                const endDate = row[2]?.toString().trim();
+                const hours = row[3];
+                const daysUsed = row[4];
+                const teacher = row[5]?.toString().trim();
+                const ta = row[6]?.toString().trim();
+                
+                console.log(`📝 Sətir ${i}:`, { moduleName, hours, teacher, ta });
+                
+                // Əgər modul adı varsa
+                if (moduleName && moduleName !== '-' && moduleName !== '') {
+                  // Saatları saxla
+                  if (hours && !isNaN(hours) && hours > 0) {
+                    group.moduleHours[moduleName] = Number(hours);
+                    console.log(`⏰ ${moduleName} üçün saat: ${hours}`);
+                  }
+                  
+                  // Müəllimi təyin et (6-cı sütun)
+if (teacher && teacher !== '-' && teacher !== '' && teacher.trim() !== '') {
+  group.assignments[moduleName] = teacher.trim();
+  console.log(`👨‍🏫 ${moduleName} üçün müəllim: ${teacher.trim()}`);
+}
+
+// TA-nı təyin et (7-ci sütun)
+if (ta && ta !== '-' && ta !== '' && ta.trim() !== '') {
+  group.taAssignments[moduleName] = ta.trim();
+  console.log(`👥 ${moduleName} üçün TA: ${ta.trim()}`);
+}
+                }
+              }
               
               console.log(`✅ ${groupName} üçün təyinatlar yükləndi:`, 
                           Object.keys(group.assignments).length, 'müəllim,',
-                          Object.keys(group.taAssignments).length, 'TA');
+                          Object.keys(group.taAssignments).length, 'TA,',
+                          Object.keys(group.moduleHours).length, 'modul saatı');
+            } else {
+              console.error(`❌ Qrup tapılmadı: ${groupName}`);
             }
           }
         }
@@ -4153,7 +4242,32 @@ importFileInput.onchange = async (e) => {
           }
         });
       }
-
+// ========== 4.5. TƏQVIM GÜN TƏYİNATLARINI OXU ==========
+const dayAssignSheet = workbook.Sheets['Gün Təyinatları'];
+if (dayAssignSheet) {
+  const dayAssignData = XLSX.utils.sheet_to_json(dayAssignSheet);
+  console.log('📅 Gün təyinatları tapıldı:', dayAssignData.length);
+  
+  if (!state.dayAssignments) state.dayAssignments = {};
+  
+  dayAssignData.forEach(row => {
+    const groupName = row['Qrup'];
+    const date = row['Tarix'];
+    const teacher = row['Müəllim'] || '';
+    const ta = row['TA'] || '';
+    
+    const dayKey = `${groupName}_${date}`;
+    
+    state.dayAssignments[dayKey] = {
+      teacher: teacher,
+      ta: ta,
+      date: date,
+      groupName: groupName
+    };
+    
+    console.log(`✅ ${dayKey} üçün təyinat: ${teacher} / ${ta}`);
+  });
+}
       // ========== 5. BAYRAYLARI OXU ==========
       const holidaysSheet = workbook.Sheets['Bayramlar'];
       if (holidaysSheet) {
@@ -4176,7 +4290,6 @@ importFileInput.onchange = async (e) => {
           }
         });
       }
-
       // ========== 6. QİYMƏTLƏNDİRMƏ MƏLUMATLARINI OXU ==========
       workbook.SheetNames.forEach(sheetName => {
         if (sheetName.includes('Qiymet')) {

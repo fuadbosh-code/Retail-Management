@@ -3277,7 +3277,7 @@ const sortedTeachers = filteredTeachers.sort((a, b) => {
   return teacherHours[b].total - teacherHours[a].total;
 });
   
-  let html = '<div class="dashboard-card">';
+  let html = '<div id="section-hours" class="dashboard-card">';
   
   // BAŞLIQ VƏ FİLTRLƏR
   html += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;flex-wrap:wrap;gap:10px;">
@@ -3459,6 +3459,17 @@ function renderDashboard() {
   today.setHours(0, 0, 0, 0);
   
   let html = '';
+  // Scroll düymələri
+html += `<div style="position:sticky;top:0;z-index:100;background:white;padding:10px 0;margin-bottom:15px;border-bottom:2px solid #e6edf3;display:flex;gap:8px;flex-wrap:wrap;">
+  <button class="btn secondary" onclick="document.querySelector('#section-performance').scrollIntoView({behavior:'smooth',block:'start'})" style="padding:6px 10px;font-size:11px;">🏆 Performans</button>
+  <button class="btn secondary" onclick="document.querySelector('#section-calendar').scrollIntoView({behavior:'smooth',block:'start'})" style="padding:6px 10px;font-size:11px;">📅 Takvim</button>
+  <button class="btn secondary" onclick="document.querySelector('#section-session').scrollIntoView({behavior:'smooth',block:'start'})" style="padding:6px 10px;font-size:11px;">⏰ Seans Yükü</button>
+  <button class="btn secondary" onclick="document.querySelector('#section-notes').scrollIntoView({behavior:'smooth',block:'start'})" style="padding:6px 10px;font-size:11px;">📌 Qeydlər</button>
+  <button class="btn secondary" onclick="document.querySelector('#section-teachers').scrollIntoView({behavior:'smooth',block:'start'})" style="padding:6px 10px;font-size:11px;">👥 Müəllimlər</button>
+  <button class="btn secondary" onclick="document.querySelector('#section-groups').scrollIntoView({behavior:'smooth',block:'start'})" style="padding:6px 10px;font-size:11px;">🎯 Qruplar</button>
+  <button class="btn secondary" onclick="document.querySelector('#section-hours').scrollIntoView({behavior:'smooth',block:'start'})" style="padding:6px 10px;font-size:11px;">⏱️ Aylıq Saatlar</button>
+  <button class="btn secondary" onclick="document.querySelector('#section-completion').scrollIntoView({behavior:'smooth',block:'start'})" style="padding:6px 10px;font-size:11px;">📈 Tamamlanma</button>
+</div>`;
   
   // ÜST HİSSƏ: Statistika Kartları
   html += '<div class="dashboard-grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr));">';
@@ -3509,8 +3520,14 @@ function renderDashboard() {
   html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-top:20px;">';
   
   // SOL: Yaxın Həftəlik Qeydlər (Scroll ilə)
-  html += '<div class="dashboard-card">';
-  html += '<h3 style="margin-top:0;display:flex;align-items:center;gap:8px;"><span style="font-size:24px;">📌</span> Yaxın Həftəlik Qeydlər</h3>';
+  html += '<div id="section-notes" class="dashboard-card">';
+  html += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;flex-wrap:wrap;">
+  <h3 style="margin:0;display:flex;align-items:center;gap:8px;"><span style="font-size:24px;">📌</span> Yaxın Həftəlik Qeydlər</h3>
+  <div style="display:flex;gap:8px;">
+    <button class="btn secondary notes-filter-btn active" data-filter="all" style="padding:6px 12px;font-size:12px;">Hamısı</button>
+    <button class="btn secondary notes-filter-btn" data-filter="urgent" style="padding:6px 12px;font-size:12px;">⚠️ Təcili</button>
+  </div>
+</div>`;
   
   let upcomingNotes = [];
   activeGroups.forEach(g => {
@@ -3533,12 +3550,16 @@ function renderDashboard() {
   });
   
   upcomingNotes.sort((a, b) => a.dateObj - b.dateObj);
-  
-  if (upcomingNotes.length === 0) {
+  // Not filtrini tətbiq et
+const filterValue = 'all'; // default
+const filteredNotes = filterValue === 'urgent' ? 
+  upcomingNotes.filter(n => n.status === 'orange' || n.status === 'yellow') : 
+  upcomingNotes;
+  if (filteredNotes.length === 0) {
     html += '<p class="small muted">Yaxın tarixdə qeyd yoxdur.</p>';
   } else {
     html += '<div style="max-height:400px;overflow-y:auto;padding-right:5px;">';
-    upcomingNotes.forEach(note => {
+    filteredNotes.forEach(note => {
       const statusColor = note.status === 'orange' ? 'var(--orange)' : 'var(--yellow)';
       const statusIcon = note.status === 'orange' ? '⚠️' : '⏳';
       const statusText = note.status === 'orange' ? 'Bu həftə HƏLL' : 'Gələn həftə';
@@ -3562,8 +3583,15 @@ function renderDashboard() {
   html += '</div>'; // Sol kart sonu
   
   // SAĞ: Müəllim Yükü Analizi (Scroll ilə)
-  html += '<div class="dashboard-card">';
-  html += '<h3 style="margin-top:0;display:flex;align-items:center;gap:8px;"><span style="font-size:24px;">👥</span> Müəllim Yükü Analizi</h3>';
+  html += '<div id="section-teachers" class="dashboard-card">';
+  html += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;flex-wrap:wrap;">
+  <h3 style="margin:0;display:flex;align-items:center;gap:8px;"><span style="font-size:24px;">👥</span> Müəllim Yükü Analizi</h3>
+  <div style="display:flex;gap:8px;">
+    <button class="btn secondary teacher-filter-btn active" data-filter="all" style="padding:6px 12px;font-size:12px;">Hamısı</button>
+    <button class="btn secondary teacher-filter-btn" data-filter="teacher" style="padding:6px 12px;font-size:12px;">Müəllim</button>
+    <button class="btn secondary teacher-filter-btn" data-filter="ta" style="padding:6px 12px;font-size:12px;">TA</button>
+  </div>
+</div>`;
   
   const teacherLoad = {};
   
@@ -3599,8 +3627,15 @@ function renderDashboard() {
       }
     });
   });
-  
-  const sortedTeachers = Object.values(teacherLoad).sort((a, b) => b.modules - a.modules);
+  // Müəllim filtri tətbiq et
+const teacherFilterValue = 'all'; // default
+const filteredTeachers = Object.values(teacherLoad).filter(t => {
+  if (teacherFilterValue === 'all') return true;
+  if (teacherFilterValue === 'teacher') return t.role === 'teacher' || t.role === 'both';
+  if (teacherFilterValue === 'ta') return t.role === 'ta' || t.role === 'both';
+  return true;
+});
+  const sortedTeachers = filteredTeachers.sort((a, b) => b.modules - a.modules);
   
   if (sortedTeachers.length === 0) {
     html += '<p class="small muted">Heç bir müəllim təyin olunmayıb.</p>';
@@ -3654,8 +3689,8 @@ function renderDashboard() {
   html += generatePerformanceTable();
   html += generateMonthlyCalendar();
   html += generateSessionLoadAnalysis();
-  html += generateModuleCompletionChart();
-  html += '<div class="dashboard-card" style="margin-top:15px;">';
+  
+  html += '<div id="section-groups" class="dashboard-card" style="margin-top:15px;">';
   html += '<h3 style="margin-top:0;display:flex;align-items:center;gap:8px;"><span style="font-size:24px;">🎯</span> Aktiv Qrupların Modul Statusu</h3>';
   
   html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(350px,1fr));gap:12px;">';
@@ -3803,6 +3838,7 @@ if (nextModule) {
   html += '</div>'; // Grid sonu
   html += '</div>'; // Kart sonu
   html += generateMonthlyHoursAnalysis();  // AYLIK SAAT ANALİZİ
+  html += generateModuleCompletionChart(); // Bu sətri buraya köçürdük
   
   container.innerHTML = html;
 }
@@ -3873,7 +3909,7 @@ function generatePerformanceTable() {
     // Ortalamaya görə sırala (ən yüksək əvvəl)
     groupStats.sort((a, b) => b.avgGrade - a.avgGrade);
 
-    let html = '<div class="dashboard-card">';
+    let html = '<div id="section-performance" class="dashboard-card">';
     html += '<h3 style="margin-top:0;display:flex;align-items:center;gap:8px;"><span style="font-size:24px;">🏆</span> Qrup Performans Reytinqi</h3>';
     html += '<p class="small muted">Qiymətləndirmə sistemindəki ortalama bala görə sıralanıb</p>';
 
@@ -3967,7 +4003,7 @@ function generateMonthlyCalendar() {
     const monthNames = ['Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'İyun', 
                        'İyul', 'Avqust', 'Sentyabr', 'Oktyabr', 'Noyabr', 'Dekabr'];
 
-    let html = '<div class="dashboard-card">';
+    let html = '<div id="section-calendar" class="dashboard-card">';
     html += `<h3 style="margin-top:0;display:flex;align-items:center;gap:8px;"><span style="font-size:24px;">📅</span> ${monthNames[currentMonth]} ${currentYear} - Bitən Modullar</h3>`;
 
     if (thisMonthModules.length === 0) {
@@ -4059,7 +4095,7 @@ function generateSessionLoadAnalysis() {
         }
     });
 
-    let html = '<div class="dashboard-card">';
+    let html = '<div id="section-session" class="dashboard-card">';
     html += '<h3 style="margin-top:0;display:flex;align-items:center;gap:8px;"><span style="font-size:24px;">⏰</span> Seans Yükü Analizi</h3>';
     html += '<p class="small muted">Hər seansdakı qrup və müəllim sayı</p>';
 
@@ -4162,7 +4198,7 @@ function generateModuleCompletionChart() {
     const inProgressPercent = moduleStats.total > 0 ? ((moduleStats.inProgress / moduleStats.total) * 100).toFixed(1) : 0;
     const upcomingPercent = moduleStats.total > 0 ? ((moduleStats.upcoming / moduleStats.total) * 100).toFixed(1) : 0;
 
-    let html = '<div class="dashboard-card">';
+    let html = '<div id="section-completion" class="dashboard-card">';
     html += '<h3 style="margin-top:0;display:flex;align-items:center;gap:8px;"><span style="font-size:24px;">📈</span> Modul Tamamlanma Statistikası</h3>';
 
     // Ümumi statistika
@@ -4605,7 +4641,22 @@ if (calNotesSheet) {
 
   reader.readAsArrayBuffer(file);
 };
-
+// Not filtr düymələrini idarə et
+document.addEventListener('click', function(e) {
+  if (e.target.classList.contains('notes-filter-btn')) {
+    document.querySelectorAll('.notes-filter-btn').forEach(btn => btn.classList.remove('active'));
+    e.target.classList.add('active');
+    renderDashboard();
+  }
+});
+// Müəllim filtr düymələrini idarə et
+document.addEventListener('click', function(e) {
+  if (e.target.classList.contains('teacher-filter-btn')) {
+    document.querySelectorAll('.teacher-filter-btn').forEach(btn => btn.classList.remove('active'));
+    e.target.classList.add('active');
+    renderDashboard();
+  }
+});
 </script>
 </body>
 </html>

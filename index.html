@@ -1302,7 +1302,7 @@ if (result.length > 0) {
       while(cur <= progEnd){
         if(cur >= progStart) {
           const key = formatDateDMY(cur);
-          const entry = notes[key] || {status:'yellow', text:''}; 
+          const entry = notes[key] || {status:'green', text:''}; 
           rows.push({date: key, entry: entry});
         }
         cur.setDate(cur.getDate() + 7); // Növbəti həftəyə keç
@@ -2654,7 +2654,7 @@ setTimeout(() => {
         const notes = g.weeklyNotes || {};
         
         sortedDates.forEach(date => {
-            const entry = notes[date] || {status:'yellow', text:''};
+            const entry = notes[date] || {status:'green', text:''};
             const statusColor = entry.status === 'green' ? 'var(--green)' : 
                               entry.status === 'orange' ? 'var(--orange)' : 'var(--yellow)';
             const statusIcon = entry.status === 'green' ? '✓' : 
@@ -3551,7 +3551,12 @@ html += `<div style="position:sticky;top:0;z-index:100;background:white;padding:
   
   upcomingNotes.sort((a, b) => a.dateObj - b.dateObj);
   // Not filtrini tətbiq et
-const filterValue = 'all'; // default
+// Not filtri - düymədən oxu
+let filterValue = 'all';
+const activeFilterBtn = document.querySelector('.notes-filter-btn.active');
+if (activeFilterBtn) {
+  filterValue = activeFilterBtn.dataset.filter;
+}
 const filteredNotes = filterValue === 'urgent' ? 
   upcomingNotes.filter(n => n.status === 'orange' || n.status === 'yellow') : 
   upcomingNotes;
@@ -3628,7 +3633,12 @@ const filteredNotes = filterValue === 'urgent' ?
     });
   });
   // Müəllim filtri tətbiq et
-const teacherFilterValue = 'all'; // default
+// Müəllim filtri - düymədən oxu
+let teacherFilterValue = 'all';
+const activeTeacherFilterBtn = document.querySelector('.teacher-filter-btn.active');
+if (activeTeacherFilterBtn) {
+  teacherFilterValue = activeTeacherFilterBtn.dataset.filter;
+}
 const filteredTeachers = Object.values(teacherLoad).filter(t => {
   if (teacherFilterValue === 'all') return true;
   if (teacherFilterValue === 'teacher') return t.role === 'teacher' || t.role === 'both';

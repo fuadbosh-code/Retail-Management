@@ -2587,8 +2587,8 @@ function exportAllDataToExcel() {
       t.email || '',
       t.phone || '',
       t.note || '',
-      t.bio || '',  // 🆕 YENİ
-      t.photoURL || ''  // 🆕 YENİ
+      t.bio ? (t.bio.length > 100 ? t.bio.substring(0, 100) + '...' : t.bio) : '',
+      t.photoURL ? 'Var' : 'Yox'
     ]);
   });
   const wsTeachers = XLSX.utils.aoa_to_sheet(teachersData);

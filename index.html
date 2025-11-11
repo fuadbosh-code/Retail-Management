@@ -235,6 +235,9 @@
   <option value="5">5 Modul (Standart)</option>
   <option value="6">6 Modul (+ Programming Fundamentals)</option>
 </select>
+<label>Layihə təqdimat tarixi (gün/ay/il) - İstəyə bağlı</label>
+<input id="presentationDate" placeholder="01/03/2026 (boş buraxsanız avtomatik hesablanar)" />
+<p class="small muted">⚠️ Bu tarix layihə işinin 40 günlük müddətindən sonra olmalıdır</p>
 
 <label>Hər modul üçün tələb olunan ümumi saat</label>
         <div id="modulesInputs"></div>
@@ -1164,11 +1167,12 @@ function computeScheduleForGroup(group){
         }
         
 		// Layihə mərhələlərini əlavə et
+// Layihə mərhələlərini əlavə et
 if (result.length > 0) {
   const lastModule = result[result.length - 1];
   const lastModuleEnd = parseDateDMY(lastModule.end);
   
-  // 1 həftə istirahət
+  // 1 həftəlik istirahət
   const restStart = new Date(lastModuleEnd);
   restStart.setDate(restStart.getDate() + 1);
   const restEnd = new Date(restStart);
@@ -1176,16 +1180,28 @@ if (result.length > 0) {
   
   // Layihə işi (40 gün)
   const projectStart = new Date(restEnd);
-  projectStart.setDate(projectStart.getDate() + 1);
+  projectStart.setDate(projectStart.setDate() + 1);
   const projectEnd = new Date(projectStart);
   projectEnd.setDate(projectEnd.getDate() + 39);
   
-  // Təqdimat günü
-  const presentationDate = new Date(projectEnd);
-  presentationDate.setDate(presentationDate.getDate() + 1);
+  // Təqdimat tarixi - əgər qrupda təyin olunubsa onu istifadə et, yoxsa avtomatik hesabla
+  let presentationDateObj;
+  if (group.presentationDate && group.presentationDate.trim() !== '') {
+    try {
+      presentationDateObj = parseDateDMY(group.presentationDate);
+    } catch (e) {
+      // Əgər tarix səhvdirsə, avtomatik hesabla
+      presentationDateObj = new Date(projectEnd);
+      presentationDateObj.setDate(presentationDateObj.getDate() + 1);
+    }
+  } else {
+    // Avtomatik: layihənin sonundan 1 gün sonra
+    presentationDateObj = new Date(projectEnd);
+    presentationDateObj.setDate(presentationDateObj.getDate() + 1);
+  }
   
   result.push({
-    module: '🏖️ İstirahət',
+    module: '🖐️ İstirahət',
     start: formatDateDMY(restStart),
     end: formatDateDMY(restEnd),
     hours: 0,
@@ -1214,8 +1230,8 @@ if (result.length > 0) {
   
   result.push({
     module: '🎓 Təqdimat Günü',
-    start: formatDateDMY(presentationDate),
-    end: formatDateDMY(presentationDate),
+    start: formatDateDMY(presentationDateObj),
+    end: formatDateDMY(presentationDateObj),
     hours: 0,
     daysUsed: 1,
     teacher: null,
@@ -1223,7 +1239,8 @@ if (result.length > 0) {
     sessionTime: '-',
     groupName: group.name,
     groupCode: group.code,
-    isPresentation: true
+    isPresentation: true,
+    isPresentationCustom: group.presentationDate ? true : false // Xüsusi təyin olunub?
   });
 }
 		
@@ -1236,7 +1253,11 @@ if (result.length > 0) {
       const schedule = computeScheduleForGroup(g);
       
       let html = `<h3>${g.name} Təfərrüatları</h3><div style="margin-bottom:15px"><strong>${g.name}</strong> – ${SESSIONS[g.code].startTime}-${SESSIONS[g.code].endTime} (${g.code}) – Başlanğıc: ${g.startDate}</div>`;
-      
+      if (g.presentationDate) {
+  html += `<div style="padding:8px;background:#fef3c7;border-left:4px solid #f59e0b;border-radius:6px;margin-bottom:10px;">
+    <strong>🎓 Xüsusi təqdimat tarixi:</strong> ${g.presentationDate}
+  </div>`;
+}
       html += `<h4>Modul Cədvəli və Müəllim Təyinatı</h4><table><thead><tr><th>Modul</th><th>Başlama</th><th>Bitiş</th><th>Saat Aralığı</th><th>Saat</th><th>Günlər</th><th>Müəllim</th><th>TA</th></tr></thead><tbody>`;
       
       schedule.forEach(s=>{
@@ -2282,6 +2303,7 @@ addGroupBtn.onclick = ()=>{
   const code = groupCodeInput.value;
   const start = startDateInput.value.trim(); 
   if(!/^\d{2}\/\d{2}\/\d{4}$/.test(start)) return alert('Tarix formatı dd/mm/yyyy olmalıdır');
+  const presentationDateInput = document.getElementById('presentationDate').value.trim();
   
   const moduleHours = {};
   document.querySelectorAll('[data-module]').forEach(inp=> moduleHours[inp.dataset.module] = Number(inp.value||40));
@@ -2295,7 +2317,8 @@ addGroupBtn.onclick = ()=>{
     startDate:start,
     moduleCount: moduleCount,
     moduleHours, 
-    assignments: (existingIndex!==-1? state.groups[existingIndex].assignments : {}),
+    presentationDate: presentationDateInput || null,
+	assignments: (existingIndex!==-1? state.groups[existingIndex].assignments : {}),
     taAssignments: (existingIndex!==-1? state.groups[existingIndex].taAssignments : {}),
     weeklyNotes: (existingIndex!==-1? state.groups[existingIndex].weeklyNotes:{}),
     archived: false
@@ -2423,13 +2446,14 @@ function exportAllDataToExcel() {
   const wb = XLSX.utils.book_new();
   
   // 1. Qruplar
-  const groupsData = [['Qrup Adı', 'Kod', 'Başlanğıc', 'Modul Sayı', 'Status']];
+  const groupsData = [['Qrup Adı', 'Kod', 'Başlanğıc', 'Modul Sayı', 'Təqdimat Tarixi', 'Status']];
   state.groups.forEach(g => {
     groupsData.push([
       g.name,
       g.code,
       g.startDate,
       g.moduleCount || 5,
+      g.presentationDate || 'Avtomatik',
       g.archived ? 'Arxiv' : 'Aktiv'
     ]);
   });
@@ -2770,7 +2794,7 @@ openCalendarBtn.onclick = () => openCalendarModal();
 
 const MONTHS_AZ = ['Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'İyun', 
                    'İyul', 'Avqust', 'Sentyabr', 'Oktyabr', 'Noyabr', 'Dekabr'];
-const DAYS_AZ = ['B', 'Be', 'Ça', 'Ç', 'Ca', 'C', 'Ş'];
+const DAYS_AZ = ['Be', 'Ça', 'Ç', 'Ca', 'C', 'Ş', 'B']; // Bazar sonda
 
 function openCalendarModal() {
   const modal = document.getElementById('calendarModal');
@@ -2861,6 +2885,7 @@ function renderMonthView(year, month, groupFilter, teacherFilter, compact = fals
   const firstDay = new Date(year, month, 1);
   const lastDay = new Date(year, month + 1, 0);
   const startDay = firstDay.getDay(); // 0 = Bazar
+  const adjustedStartDay = (startDay === 0) ? 6 : startDay - 1; // Bazar sonda göstərmək üçün
   const daysInMonth = lastDay.getDate();
   
   const today = new Date();
@@ -2875,7 +2900,7 @@ function renderMonthView(year, month, groupFilter, teacherFilter, compact = fals
   html += '</tr></thead><tbody><tr>';
   
   // Boş günlər (ayın başlanğıcına qədər)
-  for(let i = 0; i < startDay; i++) {
+  for(let i = 0; i < adjustedStartDay; i++) {
     html += '<td></td>';
   }
   
@@ -2918,13 +2943,13 @@ function renderMonthView(year, month, groupFilter, teacherFilter, compact = fals
       ${hasNote ? `<div style="width:6px;height:6px;background:${noteColor};border-radius:50%;position:absolute;top:4px;right:4px;"></div>` : ''}
     </td>`;
     
-    if((startDay + day) % 7 === 0 && day < daysInMonth) {
+    if((adjustedStartDay + day) % 7 === 0 && day < daysInMonth) {
       html += '</tr><tr>';
     }
   }
   
   // Sətiri tamamla
-  const remainingCells = (startDay + daysInMonth) % 7;
+  const remainingCells = (adjustedStartDay + daysInMonth) % 7;
   if(remainingCells !== 0) {
     for(let i = remainingCells; i < 7; i++) {
       html += '<td></td>';
@@ -3520,46 +3545,63 @@ html += `<div style="position:sticky;top:0;z-index:100;background:white;padding:
   html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-top:20px;">';
   
   // SOL: Yaxın Həftəlik Qeydlər (Scroll ilə)
+  // SOL: Yaxın Həftəlik Qeydlər (Ən son yazılanlar)
   html += '<div id="section-notes" class="dashboard-card">';
   html += `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;flex-wrap:wrap;">
-  <h3 style="margin:0;display:flex;align-items:center;gap:8px;"><span style="font-size:24px;">📌</span> Yaxın Həftəlik Qeydlər</h3>
+  <h3 style="margin:0;display:flex;align-items:center;gap:8px;"><span style="font-size:24px;">📌</span> Ən Son Həftəlik Qeydlər</h3>
   <div style="display:flex;gap:8px;">
     <button class="btn secondary notes-filter-btn active" data-filter="all" style="padding:6px 12px;font-size:12px;">Hamısı</button>
     <button class="btn secondary notes-filter-btn" data-filter="urgent" style="padding:6px 12px;font-size:12px;">⚠️ Təcili</button>
   </div>
 </div>`;
   
-  let upcomingNotes = [];
+  let recentNotes = [];
   activeGroups.forEach(g => {
     const notes = g.weeklyNotes || {};
+    
+    // Hər qrupun ən son NOT YAZILAN tarixini tap
+    let lastNoteDate = null;
+    let lastNoteEntry = null;
+    
     Object.keys(notes).forEach(dateStr => {
-      const noteDate = parseDateDMY(dateStr);
-      const daysDiff = Math.ceil((noteDate - today) / (1000 * 60 * 60 * 24));
-      
-      if (daysDiff >= -7 && daysDiff <= 14 && notes[dateStr].status !== 'green') {
-        upcomingNotes.push({
-          group: g.name,
-          date: dateStr,
-          dateObj: noteDate,
-          daysDiff: daysDiff,
-          status: notes[dateStr].status,
-          text: notes[dateStr].text
-        });
+      const entry = notes[dateStr];
+      // Yalnız NOT YAZILAN (text var) tarixləri nəzərə al
+      if (entry.text && entry.text.trim() !== '') {
+        const noteDate = parseDateDMY(dateStr);
+        if (!lastNoteDate || noteDate > lastNoteDate) {
+          lastNoteDate = noteDate;
+          lastNoteEntry = {
+            group: g.name,
+            date: dateStr,
+            dateObj: noteDate,
+            status: entry.status,
+            text: entry.text
+          };
+        }
       }
     });
+    
+    // Ən son not tapıldısa əlavə et
+    if (lastNoteEntry) {
+      const daysDiff = Math.ceil((lastNoteEntry.dateObj - today) / (1000 * 60 * 60 * 24));
+      lastNoteEntry.daysDiff = daysDiff;
+      recentNotes.push(lastNoteEntry);
+    }
   });
   
-  upcomingNotes.sort((a, b) => a.dateObj - b.dateObj);
+  // Ən yeni tarixdən köhnəyə doğru sırala
+  recentNotes.sort((a, b) => b.dateObj - a.dateObj);
   // Not filtrini tətbiq et
 // Not filtri - düymədən oxu
+// Not filtri - düyməddən oxu
 let filterValue = 'all';
 const activeFilterBtn = document.querySelector('.notes-filter-btn.active');
 if (activeFilterBtn) {
   filterValue = activeFilterBtn.dataset.filter;
 }
 const filteredNotes = filterValue === 'urgent' ? 
-  upcomingNotes.filter(n => n.status === 'orange' || n.status === 'yellow') : 
-  upcomingNotes;
+  recentNotes.filter(n => n.status === 'orange' || n.status === 'yellow') : 
+  recentNotes;
   if (filteredNotes.length === 0) {
     html += '<p class="small muted">Yaxın tarixdə qeyd yoxdur.</p>';
   } else {
@@ -4330,6 +4372,7 @@ importFileInput.onchange = async (e) => {
               moduleHours: {},
               assignments: {},
               taAssignments: {},
+			  presentationDate: row['Təqdimat Tarixi'] && row['Təqdimat Tarixi'] !== 'Avtomatik' ? row['Təqdimat Tarixi'] : null,
               weeklyNotes: {}
             };
             state.groups.push(newGroup);
@@ -4340,6 +4383,7 @@ importFileInput.onchange = async (e) => {
             existingGroup.startDate = row['Başlanğıc'];
             existingGroup.moduleCount = row['Modul Sayı'] || 5;
             existingGroup.archived = row['Status'] === 'Arxiv';
+			existingGroup.presentationDate = row['Təqdimat Tarixi'] && row['Təqdimat Tarixi'] !== 'Avtomatik' ? row['Təqdimat Tarixi'] : null;
           }
         });
       }

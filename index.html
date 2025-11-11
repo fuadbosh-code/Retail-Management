@@ -1097,7 +1097,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const realIdx = state.groups.indexOf(g);
         const el = document.createElement('div');
         el.style.padding='8px'; el.style.borderBottom='1px dashed #eef2f7';
-        el.innerHTML = `<strong>${g.name}</strong> <div class="small muted">${SESSIONS[g.code].startTime}-${SESSIONS[g.code].endTime} (${g.code}) – Baş: ${g.startDate}</div><div style="margin-top:6px"><button data-idx="${realIdx}" class="btn normal-open-btn">Normal Aç</button> <button data-idx="${realIdx}" class="btn secondary popup-open-btn">Pəncərə Kimi Aç</button><button data-archive="${realIdx}" class="btn secondary">Arxivlə</button><button data-del="${realIdx}" class="btn danger">Sil</button></div>`;
+        el.innerHTML = `<strong>${g.name}</strong> <div class="small muted">${SESSIONS[g.code].startTime}-${SESSIONS[g.code].endTime} (${g.code}) – Baş: ${g.startDate}</div><div style="margin-top:6px"><button data-idx="${realIdx}" data-edit="${realIdx}" class="btn normal-open-btn">Normal Aç</button> <button data-idx="${realIdx}" class="btn secondary popup-open-btn">Pəncərə Kimi Aç</button><button data-archive="${realIdx}" class="btn secondary">Arxivlə</button><button data-del="${realIdx}" class="btn danger">Sil</button></div>`;
         groupsList.appendChild(el);
       });
 
@@ -2342,8 +2342,60 @@ groupsList.onclick = (e)=>{
   if(!btn) return;
   
   if(btn.classList.contains('normal-open-btn')){ 
-      renderGroupDetails(Number(btn.dataset.idx), groupDetails); 
-  }
+    const idx = Number(btn.dataset.idx);
+    
+    // 🆕 Qrupun məlumatlarını formaya doldur
+    if (btn.dataset.edit !== undefined) {
+        const g = state.groups[idx];
+        
+        // Formu doldur
+        groupNameInput.value = g.name;
+        groupCodeInput.value = g.code;
+        startDateInput.value = g.startDate;
+        
+        // Modul sayını seç
+        const moduleCountSelect = document.getElementById('moduleCount');
+        if (moduleCountSelect) {
+            moduleCountSelect.value = g.moduleCount || 5;
+        }
+        
+        // Təqdimat tarixini doldur
+        const presentationDateInput = document.getElementById('presentationDate');
+        if (presentationDateInput && g.presentationDate) {
+            presentationDateInput.value = g.presentationDate;
+        }
+        
+        // Modul saatlarını yenilə və doldur
+        updateModuleHours(g.code);
+        
+        // Modul saatlarını doldur
+        setTimeout(() => {
+            document.querySelectorAll('[data-module]').forEach(inp => {
+                const moduleName = inp.dataset.module;
+                if (g.moduleHours && g.moduleHours[moduleName]) {
+                    inp.value = g.moduleHours[moduleName];
+                }
+            });
+        }, 100);
+        
+        // Səhifəni yuxarı scroll et ki, form görünsün
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        
+        // Formu vurğula (3 saniyə)
+        const formCard = document.querySelector('#groupsPage .card');
+        if (formCard) {
+            formCard.style.border = '3px solid #2563eb';
+            formCard.style.boxShadow = '0 0 20px rgba(37,99,235,0.3)';
+            setTimeout(() => {
+                formCard.style.border = '';
+                formCard.style.boxShadow = '';
+            }, 3000);
+        }
+    }
+    
+    // Qrup detallarını göstər
+    renderGroupDetails(idx, groupDetails); 
+}
   else if(btn.classList.contains('popup-open-btn')){
       openGroupDetailsPopup(Number(btn.dataset.idx));
   }
@@ -2461,14 +2513,16 @@ function exportAllDataToExcel() {
   XLSX.utils.book_append_sheet(wb, wsGroups, 'Qruplar');
   
   // 2. Müəllimlər
-  const teachersData = [['Ad Soyad', 'Rol', 'Email', 'Telefon', 'Qeyd']];
+  const teachersData = [['Ad Soyad', 'Rol', 'Email', 'Telefon', 'Qeyd', 'Bio', 'Şəkil']];
   state.teachers.forEach(t => {
     teachersData.push([
       t.name,
       t.role === 'teacher' ? 'Müəllim' : t.role === 'ta' ? 'TA' : 'Müəllim/TA',
       t.email || '',
       t.phone || '',
-      t.note || ''
+      t.note || '',
+      t.bio || '',  // 🆕 YENİ
+      t.photoURL || ''  // 🆕 YENİ
     ]);
   });
   const wsTeachers = XLSX.utils.aoa_to_sheet(teachersData);
@@ -4408,7 +4462,9 @@ importFileInput.onchange = async (e) => {
               role: role,
               email: row['Email'] || '',
               phone: row['Telefon'] || '',
-              note: row['Qeyd'] || ''
+              note: row['Qeyd'] || '',
+              bio: row['Bio'] || '',  // 🆕 YENİ
+              photoURL: row['Şəkil'] || ''  // 🆕 YENİ
             });
           }
         });

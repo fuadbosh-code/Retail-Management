@@ -2,7 +2,7 @@
 <html lang="az">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
   <title>IT Tədris Proqramı - Giriş</title>
   
   <!-- Favicon -->
@@ -99,43 +99,105 @@
     .profile-img-placeholder{width:120px;height:120px;border-radius:50%;background:var(--light-blue);display:flex;align-items:center;justify-content:center;margin:10px auto;font-size:48px;color:var(--blue);}
     
     @media (max-width: 768px) {
-      body{padding:10px;}
-      .container{padding:12px;}
-      h1{font-size:18px;}
-      .header-flex{flex-direction:column;}
-      .dashboard-btn{width:100%;margin-top:10px;}
-      .grid{grid-template-columns:1fr;gap:12px;}
-      table{font-size:11px;}
-      th,td{padding:6px 4px;font-size:11px;}
-      input,select,button,textarea{font-size:13px;padding:7px 8px;}
-      .btn{font-size:12px;padding:7px 10px;margin:2px 0;}
-      .card{padding:10px;}
-      .group-details-container{padding:10px;max-height:600px;}
-      .assignment-cell{flex-direction:column;align-items:stretch;}
-      .assignment-cell select{width:100%;min-width:auto;}
-      .assignment-cell button{width:100%;margin-top:5px;}
-      .module-row{flex-direction:column;align-items:stretch;}
-      .module-row div{width:100%;}
-      .module-row input{width:100%!important;margin-top:5px;}
-      .holiday-item{font-size:12px;}
-      .teacher-list{max-height:120px;font-size:11px;}
-      .login-container{margin:50px auto;padding:30px;}
-      .modal-content{padding:20px;width:95%;}
-    }
-    
-    @media (max-width: 480px) {
-      body{padding:5px;}
-      .container{padding:8px;border-radius:4px;}
-      h1{font-size:16px;}
-      .card{padding:8px;}
-      table{font-size:10px;}
-      th,td{padding:4px 2px;font-size:10px;}
-      .small{font-size:11px;}
-      input,select,button,textarea{font-size:12px;padding:6px;}
-      .btn{font-size:11px;padding:6px 8px;}
-      .login-container{padding:20px;}
-      .modal-content{padding:15px;}
-    }
+  body{padding:10px;}
+  .container{padding:12px;}
+  h1{font-size:18px;}
+  .header-flex{flex-direction:column;align-items:stretch !important;}
+  .user-info{font-size:12px;padding:6px 10px;}
+  .dashboard-btn{width:100%;margin-top:5px;font-size:12px;padding:8px 10px;}
+  .btn{font-size:12px;padding:7px 10px;margin:2px 0;width:100%;}
+  .btn.secondary, .btn.danger, .btn.success, .btn.purple{width:100%;margin-top:5px;}
+  
+  /* Dashboard kartları */
+  .dashboard-grid{grid-template-columns:1fr !important;gap:10px;}
+  .dashboard-card{padding:12px;margin-bottom:10px;}
+  
+  /* Tab navigation */
+  .main-tabs{padding:0 10px;flex-wrap:wrap;overflow-x:auto;white-space:nowrap;}
+  .main-tab{font-size:12px;padding:10px 15px;}
+  
+  /* Grid yapılar */
+  .grid{grid-template-columns:1fr;gap:12px;}
+  .card{padding:10px;}
+  
+  /* Cədvəllər */
+  table{font-size:10px;display:block;overflow-x:auto;white-space:nowrap;}
+  th,td{padding:6px 4px;font-size:10px;}
+  
+  /* Input və select */
+  input,select,button,textarea{font-size:12px;padding:7px 8px;width:100%;}
+  input[type="number"]{width:100%;}
+  
+  /* Qrup detalları */
+  .group-details-container{padding:10px;max-height:600px;}
+  .assignment-cell{flex-direction:column;align-items:stretch;}
+  .assignment-cell select{width:100%;min-width:auto;}
+  .assignment-cell button{width:100%;margin-top:5px;}
+  
+  /* Modul sətirləri */
+  .module-row{flex-direction:column;align-items:stretch;}
+  .module-row div{width:100%;}
+  .module-row input{width:100%!important;margin-top:5px;}
+  
+  /* Bayram siyahısı */
+  .holiday-item{font-size:12px;}
+  .teacher-list{max-height:120px;font-size:11px;}
+  
+  /* Müəllim elementləri */
+  .teacher-item{flex-direction:column;align-items:stretch;}
+  .teacher-item-actions{width:100%;display:flex;gap:4px;margin-top:5px;}
+  .teacher-item-actions button{flex:1;}
+  
+  /* Login */
+  .login-container{margin:50px auto;padding:30px;}
+  
+  /* Modal pəncərələr */
+  .modal-content{padding:20px;width:95%;max-width:95vw;}
+  
+  /* Scroll düymələri */
+  #dashboardPage > div:first-child{flex-wrap:wrap;}
+  #dashboardPage > div:first-child button{padding:5px 8px;font-size:10px;}
+  
+  /* Note və qeyd bölmələri */
+  .note-row{flex-direction:column;align-items:stretch;}
+  
+  /* Performans cədvəli */
+  #section-performance .dashboard-card > div > div{padding:10px;}
+  
+  /* Təqvim */
+  #calendarContent table{font-size:9px;}
+  #calendarContent td{padding:4px 2px;}
+  
+  /* Bütün qeydlər cədvəli */
+  #allNotesContent table{font-size:9px;}
+  #allNotesContent th{padding:4px;font-size:9px;}
+  #allNotesContent td{padding:4px;}
+  #allNotesContent textarea{font-size:10px;min-height:40px;}
+  #allNotesContent select{font-size:10px;}
+  
+  /* Badge və status */
+  .badge{font-size:9px;padding:2px 6px;}
+  .status-badge{font-size:10px;padding:3px 8px;}
+  
+  /* Profil şəkli */
+  .profile-img-preview, .profile-img-placeholder{width:80px;height:80px;}
+}
+
+@media (max-width: 480px) {
+  body{padding:5px;}
+  .container{padding:8px;border-radius:4px;}
+  h1{font-size:15px;}
+  .card{padding:8px;}
+  table{font-size:9px;}
+  th,td{padding:4px 2px;font-size:9px;}
+  .small{font-size:10px;}
+  input,select,button,textarea{font-size:11px;padding:6px;}
+  .btn{font-size:10px;padding:6px 8px;}
+  .login-container{padding:20px;}
+  .modal-content{padding:15px;}
+  .main-tab{font-size:11px;padding:8px 12px;}
+  .dashboard-btn{font-size:11px;padding:6px 8px;}
+}
     
     .hidden{display:none!important;}
     .tab-buttons{display:flex;gap:8px;margin-bottom:15px;flex-wrap:wrap;}
@@ -375,7 +437,7 @@
       <button class="modal-close" onclick="closeCalendarModal()">&times;</button>
     </div>
     
-    <div style="display:flex;gap:15px;margin-bottom:15px;flex-wrap:wrap;align-items:center;">
+    <div style="display:flex;gap:8px;margin-bottom:15px;flex-wrap:wrap;align-items:center;">
       <select id="calendarViewType" style="width:150px;">
 		<option value="month">Ay Görünüşü</option>
 		<option value="year" selected>İl Görünüşü</option>
@@ -2922,7 +2984,7 @@ function renderCalendar() {
 }
 
 function renderYearView(year, groupFilter, teacherFilter) {
-  let html = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:15px;">';
+  let html = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:15px;">';
   
   for(let m = 0; m < 12; m++) {
     html += `<div style="border:1px solid #e6edf3;border-radius:8px;padding:10px;background:#fff;">
@@ -3539,15 +3601,15 @@ function renderDashboard() {
   
   let html = '';
   // Scroll düymələri
-html += `<div style="position:sticky;top:0;z-index:100;background:white;padding:10px 0;margin-bottom:15px;border-bottom:2px solid #e6edf3;display:flex;gap:8px;flex-wrap:wrap;">
-  <button class="btn secondary" onclick="document.querySelector('#section-performance').scrollIntoView({behavior:'smooth',block:'start'})" style="padding:6px 10px;font-size:11px;">🏆 Performans</button>
-  <button class="btn secondary" onclick="document.querySelector('#section-calendar').scrollIntoView({behavior:'smooth',block:'start'})" style="padding:6px 10px;font-size:11px;">📅 Takvim</button>
-  <button class="btn secondary" onclick="document.querySelector('#section-session').scrollIntoView({behavior:'smooth',block:'start'})" style="padding:6px 10px;font-size:11px;">⏰ Seans Yükü</button>
-  <button class="btn secondary" onclick="document.querySelector('#section-notes').scrollIntoView({behavior:'smooth',block:'start'})" style="padding:6px 10px;font-size:11px;">📌 Qeydlər</button>
-  <button class="btn secondary" onclick="document.querySelector('#section-teachers').scrollIntoView({behavior:'smooth',block:'start'})" style="padding:6px 10px;font-size:11px;">👥 Müəllimlər</button>
-  <button class="btn secondary" onclick="document.querySelector('#section-groups').scrollIntoView({behavior:'smooth',block:'start'})" style="padding:6px 10px;font-size:11px;">🎯 Qruplar</button>
-  <button class="btn secondary" onclick="document.querySelector('#section-hours').scrollIntoView({behavior:'smooth',block:'start'})" style="padding:6px 10px;font-size:11px;">⏱️ Aylıq Saatlar</button>
-  <button class="btn secondary" onclick="document.querySelector('#section-completion').scrollIntoView({behavior:'smooth',block:'start'})" style="padding:6px 10px;font-size:11px;">📈 Tamamlanma</button>
+html += `<div style="position:sticky;top:0;z-index:100;background:white;padding:8px 0;margin-bottom:10px;border-bottom:2px solid #e6edf3;display:flex;gap:4px;flex-wrap:wrap;overflow-x:auto;">
+  <button class="btn secondary" onclick="document.querySelector('#section-performance').scrollIntoView({behavior:'smooth',block:'start'})" style="padding:5px 8px;font-size:10px;white-space:nowrap;flex-shrink:0;">🏆 Performans</button>
+  <button class="btn secondary" onclick="document.querySelector('#section-calendar').scrollIntoView({behavior:'smooth',block:'start'})" style="padding:5px 8px;font-size:10px;white-space:nowrap;flex-shrink:0;">📅 Takvim</button>
+  <button class="btn secondary" onclick="document.querySelector('#section-session').scrollIntoView({behavior:'smooth',block:'start'})" style="padding:5px 8px;font-size:10px;white-space:nowrap;flex-shrink:0;">⏰ Seans</button>
+  <button class="btn secondary" onclick="document.querySelector('#section-notes').scrollIntoView({behavior:'smooth',block:'start'})" style="padding:5px 8px;font-size:10px;white-space:nowrap;flex-shrink:0;">📌 Qeydlər</button>
+  <button class="btn secondary" onclick="document.querySelector('#section-teachers').scrollIntoView({behavior:'smooth',block:'start'})" style="padding:5px 8px;font-size:10px;white-space:nowrap;flex-shrink:0;">👥 Müəllimlər</button>
+  <button class="btn secondary" onclick="document.querySelector('#section-groups').scrollIntoView({behavior:'smooth',block:'start'})" style="padding:5px 8px;font-size:10px;white-space:nowrap;flex-shrink:0;">🎯 Qruplar</button>
+  <button class="btn secondary" onclick="document.querySelector('#section-hours').scrollIntoView({behavior:'smooth',block:'start'})" style="padding:5px 8px;font-size:10px;white-space:nowrap;flex-shrink:0;">⏱️ Saatlar</button>
+  <button class="btn secondary" onclick="document.querySelector('#section-completion').scrollIntoView({behavior:'smooth',block:'start'})" style="padding:5px 8px;font-size:10px;white-space:nowrap;flex-shrink:0;">📈 Tamamlanma</button>
 </div>`;
   
   // ÜST HİSSƏ: Statistika Kartları
@@ -3799,7 +3861,7 @@ const filteredTeachers = Object.values(teacherLoad).filter(t => {
   html += '<div id="section-groups" class="dashboard-card" style="margin-top:15px;">';
   html += '<h3 style="margin-top:0;display:flex;align-items:center;gap:8px;"><span style="font-size:24px;">🎯</span> Aktiv Qrupların Modul Statusu</h3>';
   
-  html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(350px,1fr));gap:12px;">';
+  html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;">';
   
   activeGroups.forEach(g => {
     const schedule = computeScheduleForGroup(g);

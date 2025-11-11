@@ -244,6 +244,10 @@
         <div>
           <h1>IT Tədris Proqramı - Modul Planlayıcı</h1>
           <div id="userInfo" class="user-info"></div>
+		  <button id="todayAttendanceBtn" class="btn" style="margin-top:10px;background:#10b981;color:white;display:flex;align-items:center;gap:8px;width:fit-content;">
+  <span style="font-size:18px;">📋</span>
+  Bugün Davamiyyət
+</button>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
           <button id="openDashboardBtn" class="dashboard-btn">Müəllimlər Tablosu</button>
@@ -2907,7 +2911,21 @@ function scrollToClosestDate() {
 
 const openCalendarBtn = document.getElementById('openCalendarBtn');
 openCalendarBtn.onclick = () => openCalendarModal();
-
+// 📋 Bugün Davamiyyət düyməsi
+const todayAttendanceBtn = document.getElementById('todayAttendanceBtn');
+todayAttendanceBtn.onclick = () => {
+  const today = new Date();
+  const todayStr = formatDateDMY(today);
+  
+  // Təqvim modalını aç
+  openCalendarModal();
+  
+  // 500ms gözlə ki, təqvim render olsun
+  setTimeout(() => {
+    // Bugünün gününü aç
+    openDayDetails(todayStr);
+  }, 500);
+};
 const MONTHS_AZ = ['Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'İyun', 
                    'İyul', 'Avqust', 'Sentyabr', 'Oktyabr', 'Noyabr', 'Dekabr'];
 const DAYS_AZ = ['Be', 'Ça', 'Ç', 'Ca', 'C', 'Ş', 'B']; // Bazar sonda

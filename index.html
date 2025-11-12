@@ -304,7 +304,10 @@
 <label>Layihə təqdimat tarixi (gün/ay/il) - İstəyə bağlı</label>
 <input id="presentationDate" placeholder="01/03/2026 (boş buraxsanız avtomatik hesablanar)" />
 <p class="small muted">⚠️ Bu tarix layihə işinin 40 günlük müddətindən sonra olmalıdır</p>
-
+<label>Modul sırası (⬆⬇ düymələri ilə dəyişdirin)</label>
+<div id="moduleSortContainer" style="background:#f9fafb;padding:10px;border-radius:6px;margin-bottom:10px;">
+  <!-- Modullar buraya dinamik əlavə olunacaq -->
+</div>
 <label>Hər modul üçün tələb olunan ümumi saat</label>
         <div id="modulesInputs"></div>
 
@@ -852,7 +855,8 @@ function updateModuleHours(groupCode) {
         div.innerHTML = `<div style="flex:1"><label>${m}</label></div><input type="number" min="1" value="${defaultVal}" data-module="${m}" style="width:110px" />`;
         modulesInputs.appendChild(div);
     });
-}
+// Modul sıralamasını göstər
+renderModuleSortUI(modulesToShow);}
 
     groupCodeInput.onchange = (e) => updateModuleHours(e.target.value);
 
@@ -1201,7 +1205,13 @@ function computeScheduleForGroup(group){
         curDate = advanceToAllowed(curDate);
 
     // Qrupun modul sayını müəyyən et
-    const modulesToUse = group.moduleCount === 6 ? MODULES_6 : MODULES_5;
+    // 🆕 Əgər custom sıralama varsa, onu işlət
+let modulesToUse;
+if (group.moduleOrder && group.moduleOrder.length > 0) {
+  modulesToUse = group.moduleOrder;
+} else {
+  modulesToUse = group.moduleCount === 6 ? MODULES_6 : MODULES_5;
+}
 
     for(const module of modulesToUse){
             const hours = Number(group.moduleHours[module]||40);
@@ -2362,7 +2372,77 @@ addTeacherBtn.onclick = ()=>{
   teacherNameInput.value=''; 
   saveState();
 }
+// 🆕 MODUL SIRALAMASI FUNKSIYALARI
+let currentModuleOrder = []; // Cari modul sırası
 
+function renderModuleSortUI(modules) {
+  const container = document.getElementById('moduleSortContainer');
+  if (!container) return;
+  
+  // Əgər sıralama yoxdursa, default sıralamadan götür
+  if (currentModuleOrder.length === 0) {
+    currentModuleOrder = [...modules];
+  }
+  
+  container.innerHTML = '';
+  
+  currentModuleOrder.forEach((moduleName, index) => {
+    const div = document.createElement('div');
+    div.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px;background:white;border:1px solid #e6edf3;border-radius:6px;margin-bottom:6px;';
+    
+    div.innerHTML = `
+      <span style="font-weight:600;color:var(--muted);min-width:25px;">${index + 1}.</span>
+      <span style="flex:1;font-size:13px;">${moduleName}</span>
+      <button class="btn secondary" onclick="moveModule(${index}, -1)" ${index === 0 ? 'disabled' : ''} style="padding:4px 8px;font-size:11px;">⬆</button>
+      <button class="btn secondary" onclick="moveModule(${index}, 1)" ${index === currentModuleOrder.length - 1 ? 'disabled' : ''} style="padding:4px 8px;font-size:11px;">⬇</button>
+    `;
+    
+    container.appendChild(div);
+  });
+  
+  // Modul saat inputlarını da yenilə
+  updateModuleInputsFromOrder();
+}
+
+function moveModule(index, direction) {
+  const newIndex = index + direction;
+  
+  if (newIndex < 0 || newIndex >= currentModuleOrder.length) return;
+  
+  // Modulları dəyiş
+  const temp = currentModuleOrder[index];
+  currentModuleOrder[index] = currentModuleOrder[newIndex];
+  currentModuleOrder[newIndex] = temp;
+  
+  // UI-ni yenilə
+  renderModuleSortUI(currentModuleOrder);
+}
+
+function updateModuleInputsFromOrder() {
+  const modulesInputs = document.getElementById('modulesInputs');
+  if (!modulesInputs) return;
+  
+  const groupCode = document.getElementById('groupCode').value;
+  let defaultHours;
+  
+  if (['CS1', 'CS2'].includes(groupCode)) defaultHours = DEFAULT_MODULE_HOURS['CS1/CS2'];
+  else if (groupCode === 'CS3') defaultHours = DEFAULT_MODULE_HOURS['CS3'];
+  else if (['CS4', 'CS5'].includes(groupCode)) defaultHours = DEFAULT_MODULE_HOURS['CS4/CS5'];
+  else defaultHours = currentModuleOrder.reduce((acc, m) => { acc[m] = 40; return acc; }, {});
+  
+  modulesInputs.innerHTML = '';
+  
+  currentModuleOrder.forEach(m => {
+    const defaultVal = defaultHours[m] || 40;
+    const div = document.createElement('div');
+    div.className = 'module-row';
+    div.innerHTML = `
+      <div style="flex:1"><label>${m}</label></div>
+      <input type="number" min="1" value="${defaultVal}" data-module="${m}" style="width:110px" />
+    `;
+    modulesInputs.appendChild(div);
+  });
+}
 addGroupBtn.onclick = ()=>{
   const name = groupNameInput.value.trim(); 
   if(!name) return alert('Qrup adı daxil edin');
@@ -2372,6 +2452,8 @@ addGroupBtn.onclick = ()=>{
   const presentationDateInput = document.getElementById('presentationDate').value.trim();
   
   const moduleHours = {};
+  // 🆕 Modul sırasını saxla
+const moduleOrder = currentModuleOrder.length > 0 ? [...currentModuleOrder] : null;
   document.querySelectorAll('[data-module]').forEach(inp=> moduleHours[inp.dataset.module] = Number(inp.value||40));
 
  const moduleCount = Number(document.getElementById('moduleCount').value);
@@ -2383,7 +2465,8 @@ addGroupBtn.onclick = ()=>{
     startDate:start,
     moduleCount: moduleCount,
     moduleHours, 
-    presentationDate: presentationDateInput || null,
+    moduleOrder: moduleOrder,
+	presentationDate: presentationDateInput || null,
 	assignments: (existingIndex!==-1? state.groups[existingIndex].assignments : {}),
     taAssignments: (existingIndex!==-1? state.groups[existingIndex].taAssignments : {}),
     weeklyNotes: (existingIndex!==-1? state.groups[existingIndex].weeklyNotes:{}),
@@ -2401,6 +2484,7 @@ clearBtn.onclick = ()=>{
   groupNameInput.value=''; 
   startDateInput.value=''; 
   updateModuleHours(groupCodeInput.value); 
+  currentModuleOrder = []; // Modul sırasını sıfırla
 }
 
 groupsList.onclick = (e)=>{
@@ -2433,6 +2517,12 @@ groupsList.onclick = (e)=>{
         
         // Modul saatlarını yenilə və doldur
         updateModuleHours(g.code);
+		// 🆕 Modul sırasını yüklə
+if (g.moduleOrder && g.moduleOrder.length > 0) {
+  currentModuleOrder = [...g.moduleOrder];
+} else {
+  currentModuleOrder = []; // Default sıralama istifadə et
+}
         
         // Modul saatlarını doldur
         setTimeout(() => {
@@ -3322,8 +3412,12 @@ function deleteDayAssignment(dateStr, groupName) {
   }
   
   saveState();
-  closeCalendarDayModal();
-  renderCalendar();
+  
+  // Modal pəncərəni yenidən yüklə (silmə düyməsinin yox olması üçün)
+  setTimeout(() => {
+    openDayDetails(dateStr);
+    renderCalendar();
+  }, 100);
   
   alert('Təyinat silindi! Standart təyinat bərpa edildi. ✅');
 }

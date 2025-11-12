@@ -3741,9 +3741,12 @@ const filteredNotes = filterValue === 'urgent' ?
   } else {
     html += '<div style="max-height:400px;overflow-y:auto;padding-right:5px;">';
     filteredNotes.forEach(note => {
-      const statusColor = note.status === 'orange' ? 'var(--orange)' : 'var(--yellow)';
-      const statusIcon = note.status === 'orange' ? '⚠️' : '⏳';
-      const statusText = note.status === 'orange' ? 'Bu həftə HƏLL' : 'Gələn həftə';
+      const statusColor = note.status === 'green' ? 'var(--green)' : 
+                     note.status === 'orange' ? 'var(--orange)' : 'var(--yellow)';
+const statusIcon = note.status === 'green' ? '✔' : 
+                   note.status === 'orange' ? '⚠️' : '⏳';
+const statusText = note.status === 'green' ? 'Həll olundu' : 
+                   note.status === 'orange' ? 'Bu həftə HƏLL' : 'Gələn həftə';
       const daysText = note.daysDiff === 0 ? 'Bu gün' : 
                       note.daysDiff === 1 ? 'Sabah' : 
                       note.daysDiff > 0 ? `${note.daysDiff} gün sonra` : 

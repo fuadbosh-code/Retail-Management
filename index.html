@@ -3208,10 +3208,18 @@ function getDayData(dateStr, groupFilter, teacherFilter) {
       const endDate = parseDateDMY(s.end);
       
       if(date >= startDate && date <= endDate) {
-        // Müəllim filtri yoxla
+        // 🆕 GÜN-GÜN TƏYİNATI YOXLA
+        const dayKey = `${g.name}_${dateStr}`;
+        const customAssignment = state.dayAssignments && state.dayAssignments[dayKey];
+        
+        // Əgər gün-gün təyinat varsa, onu istifadə et
+        const actualTeacher = customAssignment?.teacher || s.teacher;
+        const actualTA = customAssignment?.ta || s.ta;
+        
+        // Müəllim filtri yoxla (dəyişdirilmiş müəllimlərlə)
         let matchesTeacher = teacherFilter === 'all' || 
-                            s.teacher === teacherFilter || 
-                            s.ta === teacherFilter;
+                            actualTeacher === teacherFilter || 
+                            actualTA === teacherFilter;
         
         if(matchesTeacher) {
           result.hasClass = true;
@@ -3220,12 +3228,12 @@ function getDayData(dateStr, groupFilter, teacherFilter) {
             code: g.code,
             module: s.module,
             sessionTime: s.sessionTime,
-            teacher: s.teacher || '-',
-            ta: s.ta || '-'
+            teacher: actualTeacher || '-',
+            ta: actualTA || '-'
           });
           
-          if(s.teacher) result.teachers.add(s.teacher);
-          if(s.ta) result.teachers.add(s.ta);
+          if(actualTeacher) result.teachers.add(actualTeacher);
+          if(actualTA) result.teachers.add(actualTA);
         }
       }
     });
